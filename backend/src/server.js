@@ -525,7 +525,7 @@ app.delete('/api/admin/accounts/:id',auth,superOnly,(req,res)=>{
 app.get('/api/admin/trials',auth,superOnly,(req,res)=>res.json(db.prepare('SELECT * FROM trial_requests ORDER BY created_at DESC').all()));
 
 app.get('/api/legal',(req,res)=>res.json(L));
-app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../../frontend/public/index.html')));
+app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'frontend/public/index.html')));
 
 app.listen(PORT,'0.0.0.0',()=>{
   console.log(`PMEGest.ma port ${PORT}`);
