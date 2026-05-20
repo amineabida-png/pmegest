@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#050a14">
+<title>MarocBiz ERP — نظام إدارة الأعمال المغربي 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050a14;color:#f1f5f9;font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
+input,select,textarea{font-size:16px!important;font-family:inherit}
+button{touch-action:manipulation;font-family:inherit}
+.hidden{display:none!important}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 60% 30%,#0f2a4a,#050a14)}
+.login-box{background:#0a1628;border:1px solid #1e3a5f;border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.ll-icon{width:72px;height:72px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+.ll h1{font-size:24px;font-weight:900;text-align:center}
+.ll .sub{font-size:11px;color:#2563eb;font-weight:700;letter-spacing:2px;text-align:center;margin-top:4px}
+.ll .ar{font-size:13px;color:#64748b;text-align:center;direction:rtl;margin-top:4px}
+.ll .legal{font-size:10px;color:#22c55e;text-align:center;margin-top:6px;padding:3px 10px;background:#22c55e15;border-radius:20px;display:inline-block;width:100%}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.fg input,.fg select{width:100%;padding:12px 14px;background:#06111e;border:1px solid #1e3a5f;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:#2563eb}
+.btn-login{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
+.btn-trial{width:100%;padding:12px;border-radius:12px;border:1px solid #2563eb40;background:#2563eb10;color:#2563eb;font-weight:700;font-size:14px;cursor:pointer}
+.err{color:#ef4444;font-size:13px;margin-top:10px;text-align:center;display:none}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:#1e3a5f}
+.divider span{font-size:11px;color:#334155}
+#appPage{display:none}
+.app-layout{display:flex;min-height:100vh}
+.sidebar{width:250px;background:#070e1c;border-right:1px solid #1e3a5f;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-header{padding:16px;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;gap:10px}
+.sb-icon{width:40px;height:40px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sb-title{font-size:13px;font-weight:800;color:#f1f5f9}
+.sb-sub{font-size:9px;color:#2563eb;font-weight:700;letter-spacing:1px;margin-top:2px}
+.sb-sub-ar{font-size:9px;color:#334155;direction:rtl;margin-top:1px}
+.sb-nav{flex:1;padding:8px 6px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;border:none;background:transparent;width:100%;text-align:left;border-left:3px solid transparent;transition:all .15s;margin-bottom:1px}
+.nav-item:hover{background:#ffffff08;color:#f1f5f9}
+.nav-item.active{background:#2563eb15;color:#2563eb;font-weight:700;border-left-color:#2563eb}
+.nav-item .ni{font-size:16px;flex-shrink:0;width:22px;text-align:center}
+.nav-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:auto}
+.nav-section{font-size:9px;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:1px;padding:10px 12px 4px}
+.sb-footer{padding:12px;border-top:1px solid #1e3a5f}
+.user-row{display:flex;align-items:center;gap:10px}
+.user-av{width:34px;height:34px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.user-name{font-size:12px;font-weight:700}
+.user-role{font-size:10px;color:#64748b}
+.lic-badge{margin-top:8px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;text-align:center}
+.main{margin-left:250px;flex:1;min-height:100vh}
+.topbar{height:52px;background:#070e1c;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.tb-title{font-size:12px;font-weight:700;color:#334155}
+.tb-ar{font-size:10px;color:#1e3a5f;direction:rtl}
+.tb-right{display:flex;gap:8px;align-items:center}
+.btn-logout{padding:5px 12px;border-radius:8px;border:1px solid #1e3a5f;background:transparent;color:#64748b;cursor:pointer;font-size:11px}
+.btn-super{padding:5px 12px;border-radius:8px;border:1px solid #f59e0b40;background:#f59e0b18;color:#f59e0b;font-weight:700;cursor:pointer;font-size:11px}
+.exp-badge{padding:4px 10px;border-radius:6px;background:#ef444418;border:1px solid #ef444430;font-size:11px;font-weight:700;color:#ef4444}
+.page{padding:28px;display:none}
+.page.active{display:block}
+.card{background:#0a1628;border:1px solid #1e3a5f;border-radius:16px;padding:20px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#0a1628;border:1px solid #1e3a5f;border-radius:14px;padding:18px}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px}
+.stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.stat-lbl{font-size:11px;color:#64748b;margin-top:2px}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:22px;font-weight:800}
+.page-sub{font-size:12px;color:#64748b;margin-top:3px}
+.btn{padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;transition:all .15s;font-family:inherit}
+.btn-blue{background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff}
+.btn-ghost{background:transparent;border:1px solid #1e3a5f;color:#64748b}
+.btn-ghost:hover{border-color:#2563eb;color:#2563eb}
+.btn-danger{background:#ef444418;border:1px solid #ef444430;color:#ef4444}
+.btn-success{background:#22c55e18;border:1px solid #22c55e30;color:#22c55e}
+.btn-warning{background:#f59e0b18;border:1px solid #f59e0b30;color:#f59e0b}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:7px}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #1e3a5f}
+td{padding:11px 12px;font-size:13px;border-bottom:1px solid #06111e}
+tr:hover td{background:#ffffff04}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-dot{width:5px;height:5px;border-radius:50%}
+.modal-overlay{position:fixed;inset:0;background:#00000090;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#0a1628;border:1px solid #1e3a5f;border-radius:20px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-hdr{padding:20px 24px;border-bottom:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#0a1628;z-index:1}
+.modal-hdr h3{font-size:16px;font-weight:800}
+.modal-body{padding:24px}
+.modal-foot{padding:0 24px 24px;display:flex;gap:10px;justify-content:flex-end}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-field label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:10px 14px;background:#06111e;border:1px solid #1e3a5f;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s;font-family:inherit}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#2563eb}
+.form-field textarea{resize:none;min-height:80px}
+.full{grid-column:1/-1}
+#confirmModal .modal{max-width:420px}
+#toastCont{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;min-width:260px;animation:slideIn .3s ease;box-shadow:0 8px 24px #00000060}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#1d4ed8}.t-warning{background:#d97706}
+.bulletin-section{background:#ffffff06;border-radius:12px;padding:16px;margin-bottom:12px}
+.bulletin-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff06;font-size:13px}
+.bulletin-total{background:#2563eb15;border:1px solid #2563eb30;border-radius:10px;padding:14px;text-align:right}
+.legal-note{font-size:10px;color:#22c55e;margin-top:4px}
+@media(max-width:768px){.sidebar{width:56px}.sb-title,.sb-sub,.sb-sub-ar,.nav-item span:not(.ni),.user-name,.user-role,.lic-badge,.nav-section,.nav-badge{display:none}.main{margin-left:56px}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.page{padding:14px}}
+@media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #1e3a5f;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0;scrollbar-width:none}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#2563eb;background:#2563eb10}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.stats-grid{gap:8px}.page-header{flex-direction:column;align-items:flex-start}}
+@supports(padding-bottom:env(safe-area-inset-bottom)){@media(max-width:480px){.sidebar{padding-bottom:env(safe-area-inset-bottom)}.main{margin-bottom:calc(56px + env(safe-area-inset-bottom))}}}
+</style>
+</head>
+<body>
+<div id="toastCont"></div>
+<div id="loginPage">
+  <div class="login-box">
+    <div class="ll">
+      <div class="ll-icon">🏢</div>
+      <h1>MarocBiz ERP</h1>
+      <div class="sub">SOLUTION ERP MAROCAINE 2026</div>
+      <div class="ar">نظام إدارة الأعمال المغربي</div>
+      <div class="legal">✓ CGI Art.145 · LF 2026 · Code travail 65-99</div>
+    </div>
+    <div class="fg" style="margin-top:20px"><label>Email</label><input type="email" id="loginEmail" placeholder="votre@entreprise.ma" autocomplete="email"></div>
+    <div class="fg"><label>Mot de passe</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn-login" onclick="doLogin()">Se connecter — تسجيل الدخول</button>
+    <div class="err" id="loginErr"></div>
+    <div class="divider"><span>OU · أو</span></div>
+    <button class="btn-trial" onclick="showTrialModal()">🚀 Essai gratuit 48h — طلب تجريبي مجاني</button>
+    <div style="text-align:center;font-size:10px;color:#334155;margin-top:8px">✓ Accès complet · ✓ Sans CB · ✓ Conforme CGI 2026</div>
+  </div>
+</div>
+<div id="appPage">
+  <div class="app-layout">
+    <div class="sidebar">
+      <div class="sb-header">
+        <div class="sb-icon">🏢</div>
+        <div><div class="sb-title">MarocBiz ERP</div><div class="sb-sub">ERP MAROCAIN 2026</div><div class="sb-sub-ar">نظام إدارة الأعمال</div></div>
+      </div>
+      <nav class="sb-nav" id="sidebarNav"></nav>
+      <div class="sb-footer">
+        <div class="user-row">
+          <div class="user-av" id="userAv">??</div>
+          <div><div class="user-name" id="userName">-</div><div class="user-role" id="userRole">-</div></div>
+        </div>
+        <div class="lic-badge" id="licBadge"></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-title">MarocBiz ERP — نظام إدارة الأعمال</div><div class="tb-ar">Conforme CGI · LF 2026 · Code travail</div></div>
+        <div class="tb-right">
+          <div id="expBadge" class="exp-badge hidden"></div>
+          <button id="btnSuper" class="btn-super hidden" onclick="showPage('superadmin')">👑 Super Admin</button>
+          <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+        </div>
+      </div>
+      <div id="page-dashboard" class="pageactive"></div>
+      <div id="page-facturation" class="page"></div>
+      <div id="page-clients" class="page"></div>
+      <div id="page-fournisseurs" class="page"></div>
+      <div id="page-articles" class="page"></div>
+      <div id="page-devis" class="page"></div>
+      <div id="page-employes" class="page"></div>
+      <div id="page-paie" class="page"></div>
+      <div id="page-conges" class="page"></div>
+      <div id="page-tresorerie" class="page"></div>
+      <div id="page-crm" class="page"></div>
+      <div id="page-rapports" class="page"></div>
+      <div id="page-alertes" class="page"></div>
+      <div id="page-parametres" class="page"></div>
+      <div id="page-superadmin" class="page"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="modalTitle"></h3><button onclick="closeModal()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr"><h3 id="confTitle"></h3></div>
+    <div class="modal-body"><p id="confMsg" style="color:#64748b;font-size:14px;line-height:1.6"></p></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('confirmModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-danger" id="confBtn">Confirmer</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="trialModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-hdr">
+      <div><h3>🚀 Essai gratuit 48h</h3><p style="font-size:12px;color:#64748b;margin-top:4px">Conforme CGI · LF 2026 · Sans engagement</p></div>
+      <button onclick="document.getElementById('trialModal').classList.remove('open')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field"><label>Prénom</label><input id="tr_prenom" placeholder="Mohammed"></div>
+        <div class="form-field"><label>Nom</label><input id="tr_nom" placeholder="Alami"></div>
+        <div class="form-field"><label>Téléphone</label><input id="tr_phone" placeholder="0661234567" type="tel"></div>
+        <div class="form-field"><label>Email</label><input id="tr_email" placeholder="contact@societe.ma" type="email"></div>
+        <div class="form-field full"><label>Société</label><input id="tr_societe" placeholder="ALAMI COMMERCE SARL"></div>
+        <div class="form-field full"><label>Secteur</label><select id="tr_secteur"><option>Commerce</option><option>BTP</option><option>Transport</option><option>Industrie</option><option>Services</option><option>Immobilier</option><option>Autre</option></select></div>
+      </div>
+      <div id="trialErr" style="color:#ef4444;font-size:13px;margin-top:10px;display:none"></div>
+      <div id="trialOk" style="display:none;margin-top:10px;padding:14px;background:#22c55e18;border:1px solid #22c55e30;border-radius:10px;text-align:center">
+        <div style="font-size:20px;margin-bottom:6px">✅</div>
+        <div style="font-weight:800;color:#22c55e">Demande envoyée!</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px">Notre équipe vous contacte sous 24h</div>
+      </div>
+    </div>
+    <div class="modal-foot" id="trialFoot">
+      <button class="btn btn-ghost" onclick="document.getElementById('trialModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-blue" id="trialBtn" onclick="submitTrial()">Envoyer</button>
+    </div>
+  </div>
+</div>
+<script>
+<div class="page-sub">Pipeline: ${fmtMAD(va_totale)} pondéré · ${prospects.length} prospects</div></div>
+      <button class="btn btn-blue" onclick="crmForm()">+ Nouveau prospect</button>
+    </div>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px">
+      ${pipeline.map(st=>{
+        const ps = prospects.filter(p=>p.statut===st);
+        const val = ps.reduce((a,p)=>a+p.valeur_estimee,0);
+        const s = STATUS[st]||{c:'#64748b',l:st};
+        return `<div style="min-width:200px;flex:1;background:#0a1628;border:1px solid #1e3a5f;border-top:3px solid ${s.c};border-radius:12px;padding:14px">
+          <div style="font-size:12px;font-weight:700;color:${s.c};margin-bottom:8px">${s.l} (${ps.length})</div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:10px">${fmtMAD(val)}</div>
+          ${ps.map(p=>`<div onclick="crmForm(${p.id})" style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid #1e3a5f">
+            <div style="font-size:13px;font-weight:700">${p.nom}</div>
+            <div style="font-size:11px;color:#64748b">${p.societe||''}</div>
+            <div style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px">${fmtMAD(p.valeur_estimee)} · ${p.probabilite}%</div>
+          </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function crmForm(id) {
+  const p = id ? state.crm.find(x=>x.id==id) : {};
+  openModal(id?'Modifier prospect':'Nouveau prospect 🎯',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nom contact *</label><input id="p_nom" value="${p.nom||''}" placeholder="Mohammed Alami"></div>
+      <div class="form-field"><label>Société</label><input id="p_soc" value="${p.societe||''}" placeholder="ALAMI SARL"></div>
+      <div class="form-field"><label>Téléphone</label><input id="p_tel" value="${p.tel||''}" placeholder="0661234567"></div>
+      <div class="form-field"><label>Email</label><input type="email" id="p_email" value="${p.email||''}" placeholder="contact@societe.ma"></div>
+      <div class="form-field"><label>Secteur</label><input id="p_sect" value="${p.secteur||''}" placeholder="Commerce, BTP..."></div>
+      <div class="form-field"><label>Valeur estimée (MAD)</label><input type="number" id="p_val" value="${p.valeur_estimee||0}"></div>
+      <div class="form-field"><label>Probabilité (%)</label><input type="number" id="p_prob" value="${p.probabilite||20}" min="0" max="100"></div>
+      <div class="form-field"><label>Statut pipeline</label><select id="p_stat">
+        ${['nouveau','contacte','negocie','gagne','perdu'].map(s=>`<option value="${s}" ${p.statut===s?'selected':''}>${STATUS[s]?.l||s}</option>`).join('')}
+      </select></div>
+      <div class="form-field"><label>Date relance</label><input type="date" id="p_relance" value="${p.date_relance||''}"></div>
+      <div class="form-field full"><label>Notes</label><textarea id="p_notes">${p.notes||''}</textarea></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     ${id?`<button class="btn btn-danger" onclick="delItem('crm',${id},'ce prospect')">Suppr.</button>`:''}
+     <button class="btn btn-blue" onclick="saveCRM(${id||0})">${id?'Enregistrer':'Ajouter'}</button>`
+  );
+}
+
+async function saveCRM(id) {
+  const d = {
+    nom:document.getElementById('p_nom').value,
+    societe:document.getElementById('p_soc').value,
+    tel:document.getElementById('p_tel').value,
+    email:document.getElementById('p_email').value,
+    secteur:document.getElementById('p_sect').value,
+    valeur_estimee:+document.getElementById('p_val').value,
+    probabilite:+document.getElementById('p_prob').value,
+    statut:document.getElementById('p_stat').value,
+    date_relance:document.getElementById('p_relance').value||null,
+    notes:document.getElementById('p_notes').value,
+  };
+  if (!d.nom) return toast('Nom requis','error');
+  try {
+    if (id) await api('PUT','/api/crm/'+id,d);
+    else await api('POST','/api/crm',d);
+    closeModal(); await loadAll(); renderPage('crm'); toast('Prospect sauvegardé ✓','success');
+  } catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+// ─── RAPPORTS ─────────────────────────────────────────────────
+function renderRapports(el) {
+  if (!el) el = document.getElementById('page-rapports');
+  const docs = state.documents || [];
+  const buls = state.bulletins || [];
+  const facts = docs.filter(d=>d.type==='facture'&&d.statut==='valide');
+  const ca = facts.reduce((a,f)=>a+f.total_ttc,0);
+  const ca_ht = facts.reduce((a,f)=>a+f.total_ht,0);
+  const tva = facts.reduce((a,f)=>a+f.total_tva,0);
+  const impaye = facts.filter(f=>f.montant_paye<f.total_ttc).reduce((a,f)=>a+(f.total_ttc-f.montant_paye),0);
+  const masse = buls.reduce((a,b)=>a+b.salaire_brut,0);
+  const charges_pat = buls.reduce((a,b)=>a+(b.charge_patronale_total||0),0);
+  const ir_total = buls.reduce((a,b)=>a+b.ir_net,0);
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">📈 Rapports — التقارير</div>
+      <div class="page-sub">Conformité fiscale 2026 · CGI · CNSS · DGI</div></div>
+    </div>
+    <div class="stats-grid" style="margin-bottom:20px">
+      ${[
+        ['💰','CA TTC total',fmtMAD(ca),'#2563eb'],
+        ['📊','CA HT (base fiscale)',fmtMAD(ca_ht),'#7c3aed'],
+        ['🧾','TVA collectée',fmtMAD(tva),'#f59e0b'],
+        ['⏳','Créances impayées',fmtMAD(impaye),'#ef4444'],
+        ['💼','Masse salariale brute',fmtMAD(masse),'#f97316'],
+        ['🏛','Charges patronales',fmtMAD(charges_pat),'#ef4444'],
+        ['📋','IR retenu à la source',fmtMAD(ir_total),'#f59e0b'],
+        ['💸','Coût total employeur',fmtMAD(masse+charges_pat),'#dc2626'],
+      ].map(([i,l,v,c])=>`<div class="stat-card"><div class="stat-icon" style="background:${c}18">${i}</div><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">CA par client — رقم الأعمال بحسب الزبون</div>
+        ${(() => {
+          const byClient = {};
+          facts.forEach(f => { byClient[f.tiers_nom||'Sans nom'] = (byClient[f.tiers_nom||'Sans nom']||0)+f.total_ttc; });
+          const sorted = Object.entries(byClient).sort((a,b)=>b[1]-a[1]).slice(0,8);
+          const max = Math.max(...sorted.map(x=>x[1]),1);
+          return sorted.map(([nom,val])=>`
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="width:110px;font-size:11px;font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nom}</div>
+              <div style="flex:1;height:7px;background:#1e3a5f;border-radius:4px">
+                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#60a5fa);width:${(val/max*100).toFixed(0)}%"></div>
+              </div>
+              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#2563eb;flex-shrink:0">${fmtMAD(val)}</div>
+            </div>`).join('') || '<p style="color:#64748b;font-size:13px">Aucune donnée</p>';
+        })()}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 Obligations déclaratives 2026</div>
+          ${[
+            ['TVA mensuelle','SIMPL-TVA · tax.gov.ma','Le 20 du mois suivant','#f59e0b'],
+            ['IS trimestriel','Acompte 25%/trimestre','Le 31/03, 30/06, 30/09, 31/12','#f97316'],
+            ['CNSS mensuel','Damancom · cnss.ma','Le 10 du mois suivant','#22c55e'],
+            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#2563eb'],
+            ['Décl. annuelle IR','Modèle 9421 · DGI','Avant le 28 février','#7c3aed'],
+          ].map(([t,p,d,c])=>`<div style="padding:8px;background:#ffffff04;border-radius:8px;margin-bottom:6px;border-left:3px solid ${c}">
+            <div style="font-size:12px;font-weight:700;color:${c}">${t}</div>
+            <div style="font-size:11px;color:#64748b">${p} · ${d}</div>
+          </div>`).join('')}
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ Taux légaux 2026</div>
+          ${[
+            ['TVA normal','20%'],['TVA réduit','10% · 14%'],['TVA super réduit','7%'],
+            ['CNSS salarié','4.48% (plaf. 6 000 MAD)'],['AMO salarié','2.26%'],
+            ['CNSS patronal','8.98% + AF 6.40%'],['SMIG','3 422 MAD/mois'],
+          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #06111e;font-size:12px">
+            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#2563eb">${v}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── ALERTES ──────────────────────────────────────────────────
+function renderAlertes(el) {
+  if (!el) el = document.getElementById('page-alertes');
+  const alertes = state.alertes || [];
+  const unread = alertes.filter(a=>!a.lu).length;
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">🔔 Alertes — التنبيهات</div>
+      <div class="page-sub">${unread} non lue(s) · Alertes fiscales et légales automatiques</div></div>
+      <button class="btn btn-ghost" onclick="marquerToutLu()">✓ Tout marquer lu</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${alertes.length===0?'<div class="card" style="text-align:center;color:#64748b;padding:40px">Aucune alerte — لا توجد تنبيهات</div>':
+      alertes.map(a=>{
+        const colors = {info:'#2563eb',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
+        const c = colors[a.type]||'#64748b';
+        return `<div style="background:#0a1628;border:1px solid #1e3a5f;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
+          <div style="width:38px;height:38px;background:${c}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            ${a.type==='error'?'🔴':a.type==='warning'?'🟡':a.type==='success'?'🟢':'🔵'}
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${a.titre}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:2px">${a.message||''}</div>
+            <div style="font-size:10px;color:#334155;margin-top:4px">${fmtDate(a.created_at)}</div>
+          </div>
+          ${!a.lu?`<button class="btn btn-ghost btn-sm" onclick="marquerLu(${a.id})">Lu</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function marquerLu(id) {
+  try { await api('PUT','/api/alertes/'+id+'/lu',{}); await loadAll(); renderPage('alertes'); }
+  catch(e){}
+}
+async function marquerToutLu() {
+  try { await api('PUT','/api/alertes/all/lu',{}); await loadAll(); renderPage('alertes'); toast('Toutes lues ✓','success'); }
+  catch(e){}
+}
+
+// ─── PARAMÈTRES ───────────────────────────────────────────────
+function renderParametres(el) {
+  if (!el) el = document.getElementById('page-parametres');
+  const acc = currentAccount;
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">⚙ Paramètres — الإعدادات</div>
+      <div class="page-sub">Configuration entreprise · Mentions légales factures</div></div>
+    </div>
+    <div class="card" style="max-width:700px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Votre entreprise — شركتك</div>
+      <div style="font-size:11px;color:#22c55e;margin-bottom:16px">✓ Ces informations apparaissent sur vos factures (obligatoire CGI Art.145)</div>
+      <div class="form-grid">
+        <div class="form-field full"><label>Raison sociale *</label><input id="cfg_name" value="${acc.company_name||''}"></div>
+        <div class="form-field"><label>ICE (15 chiffres) *</label><input id="cfg_ice" value="${acc.company_ice||''}" maxlength="15"></div>
+        <div class="form-field"><label>Identifiant Fiscal (IF) *</label><input id="cfg_if" value="${acc.company_if||''}"></div>
+        <div class="form-field"><label>Registre Commerce (RC) *</label><input id="cfg_rc" value="${acc.company_rc||''}"></div>
+        <div class="form-field"><label>Patente</label><input id="cfg_pat" value="${acc.company_patente||''}"></div>
+        <div class="form-field"><label>Téléphone</label><input id="cfg_tel" value="${acc.company_phone||''}"></div>
+        <div class="form-field full"><label>Adresse</label><input id="cfg_adr" value="${acc.company_address||''}"></div>
+        <div class="form-field"><label>Ville</label><input id="cfg_ville" value="${acc.company_city||''}"></div>
+        <div class="form-field"><label>Email entreprise</label><input type="email" id="cfg_email" value="${acc.company_email||''}"></div>
+      </div>
+      <button class="btn btn-blue" onclick="saveProfile()" style="margin-top:16px">💾 Enregistrer — حفظ</button>
+    </div>
+    <div class="card" style="max-width:700px;margin-top:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">⚖️ Taux légaux en vigueur — LF 2026</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        ${[
+          ['CNSS salarié','4.48%','Plafond 6 000 MAD'],
+          ['CNSS patronal','8.98%','Plafond 6 000 MAD'],
+          ['AMO salarié','2.26%','Sans plafond'],
+          ['AMO patronal','4.11%','Sans plafond'],
+          ['AF patronal','6.40%','Sans plafond'],
+          ['TFP patronal','1.60%','Sans plafond'],
+          ['IPE salarié','0.19%','Plafond 6 000 MAD'],
+          ['SMIG 2026','3 422 MAD','17.92 MAD/h'],
+          ['TVA normal','20%','Art.89 CGI'],
+        ].map(([l,v,d])=>`<div style="padding:10px;background:#ffffff04;border-radius:8px">
+          <div style="font-size:11px;color:#64748b">${l}</div>
+          <div style="font-size:16px;font-weight:700;color:#2563eb">${v}</div>
+          <div style="font-size:10px;color:#334155">${d}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function saveProfile() {
+  const d = {
+    company_name: document.getElementById('cfg_name').value,
+    company_ice: document.getElementById('cfg_ice').value,
+    company_if: document.getElementById('cfg_if').value,
+    company_rc: document.getElementById('cfg_rc').value,
+    company_patente: document.getElementById('cfg_pat').value,
+    company_phone: document.getElementById('cfg_tel').value,
+    company_address: document.getElementById('cfg_adr').value,
+    company_city: document.getElementById('cfg_ville').value,
+    company_email: document.getElementById('cfg_email').value,
+  };
+  try {
+    await api('PUT','/api/auth/profile',d);
+    currentAccount = {...currentAccount,...d};
+    toast('Profil sauvegardé ✓','success');
+  } catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+// ─── SUPER ADMIN ──────────────────────────────────────────────
+async function renderSuperAdmin(el) {
+  if (!el) el = document.getElementById('page-superadmin');
+  if (currentAccount.role !== 'super') { el.innerHTML='<div class="card" style="text-align:center;color:#ef4444;padding:40px">Accès refusé</div>'; return; }
+  let accounts=[], trials=[];
+  try { [accounts,trials] = await Promise.all([api('GET','/api/admin/accounts'),api('GET','/api/admin/trials')]); }
+  catch(e){}
+  const pending = trials.filter(t=>t.status==='en_attente');
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">👑 Super Admin — المشرف العام</div>
+      <div class="page-sub">${accounts.filter(a=>a.role!=='super').length} comptes · ${pending.length} demande(s) d'essai</div></div>
+      <button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button>
+    </div>
+    ${pending.length>0?`
+    <div class="card" style="border:1px solid #2563eb40;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#2563eb;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
+      ${pending.map(r=>`
+        <div style="padding:12px;background:#ffffff06;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#2563eb">${r.societe}</span></div>
+            <div style="font-size:12px;color:#64748b">${r.email} · ${r.phone} · ${r.secteur||'—'}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-success btn-sm" onclick="approveTrialForm(${r.id},'${r.prenom} ${r.nom}','${r.email}')">✓ Approuver</button>
+          </div>
+        </div>`).join('')}
+    </div>`:''}
+    <div class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nom</th><th>Email</th><th>Société</th><th>Plan</th><th>Expiration</th><th>Statut</th><th>Dernière cnx</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${accounts.filter(a=>a.role!=='super').map(a=>{
+            const days = a.plan==='enterprise'?'∞':Math.max(0,Math.ceil((new Date(a.expires_at)-new Date())/86400000))+'j';
+            const exp = a.plan!=='enterprise'&&a.expires_at&&new Date(a.expires_at)<new Date();
+            return `<tr>
+              <td style="font-weight:700">${a.name}</td>
+              <td style="font-size:12px;color:#64748b">${a.email}</td>
+              <td style="font-size:12px">${a.company_name||'—'}</td>
+              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#2563eb15':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#2563eb':'#f59e0b'}">${a.plan}</span></td>
+              <td style="font-size:12px;color:${exp?'#ef4444':'#64748b'}">${a.expires_at?.slice(0,10)||'—'} (${days})</td>
+              <td>${badge(a.status==='active'?'actif':'archive')}</td>
+              <td style="font-size:11px;color:#334155">${a.last_login?.slice(0,16)||'Jamais'}</td>
+              <td><div style="display:flex;gap:4px">
+                <button class="btn btn-ghost btn-sm" onclick="editAccount(${a.id})">Modifier</button>
+                <button class="btn btn-warning btn-sm" onclick="extendAccount(${a.id})">+30j</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id})">Suppr.</button>
+              </div></td>
+            </tr>`;
+          }).join('')||'<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucun compte</td></tr>'}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+function createAccount() {
+  openModal('Créer un compte client',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nom *</label><input id="ac_name" placeholder="Mohammed Alami"></div>
+      <div class="form-field"><label>Email *</label><input type="email" id="ac_email" placeholder="contact@societe.ma"></div>
+      <div class="form-field"><label>Mot de passe *</label><input type="password" id="ac_pass"></div>
+      <div class="form-field"><label>Société</label><input id="ac_soc" placeholder="ALAMI SARL"></div>
+      <div class="form-field full"><label>Plan</label><select id="ac_plan">
+        <option value="trial">Essai 48h — Gratuit</option>
+        <option value="starter">Starter 30j — 399 MAD/mois</option>
+        <option value="pro">Pro 1an — 799 MAD/mois</option>
+        <option value="enterprise">Enterprise — Illimité</option>
+      </select></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveNewAccount()">Créer</button>`
+  );
+}
+
+async function saveNewAccount() {
+  const d = { name:document.getElementById('ac_name').value, email:document.getElementById('ac_email').value, password:document.getElementById('ac_pass').value, company_name:document.getElementById('ac_soc').value, plan:document.getElementById('ac_plan').value };
+  if (!d.name||!d.email||!d.password) return toast('Nom, email et MDP requis','error');
+  try { await api('POST','/api/admin/accounts',d); closeModal(); renderPage('superadmin'); toast('Compte créé ✓','success'); }
+  catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+async function editAccount(id) {
+  const accounts = await api('GET','/api/admin/accounts');
+  const a = accounts.find(x=>x.id==id);
+  if (!a) return;
+  openModal('Modifier compte',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nom</label><input id="ea_name" value="${a.name}"></div>
+      <div class="form-field"><label>Nouveau MDP</label><input type="password" id="ea_pass" placeholder="Laisser vide = inchangé"></div>
+      <div class="form-field"><label>Plan</label><select id="ea_plan">
+        <option value="trial" ${a.plan==='trial'?'selected':''}>Essai 48h</option>
+        <option value="starter" ${a.plan==='starter'?'selected':''}>Starter</option>
+        <option value="pro" ${a.plan==='pro'?'selected':''}>Pro</option>
+        <option value="enterprise" ${a.plan==='enterprise'?'selected':''}>Enterprise</option>
+      </select></div>
+      <div class="form-field"><label>Statut</label><select id="ea_status"><option value="active" ${a.status==='active'?'selected':''}>Actif</option><option value="suspended" ${a.status==='suspended'?'selected':''}>Suspendu</option></select></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveEditAccount(${id})">Enregistrer</button>`
+  );
+}
+
+async function saveEditAccount(id) {
+  const d = { name:document.getElementById('ea_name').value, plan:document.getElementById('ea_plan').value, status:document.getElementById('ea_status').value };
+  const pass = document.getElementById('ea_pass').value;
+  if (pass) d.newPassword = pass;
+  try { await api('PUT','/api/admin/accounts/'+id,d); closeModal(); renderPage('superadmin'); toast('Compte mis à jour ✓','success'); }
+  catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+async function extendAccount(id) {
+  try { await api('PUT','/api/admin/accounts/'+id,{plan:'starter'}); renderPage('superadmin'); toast('+30j ajoutés ✓','success'); }
+  catch(e){}
+}
+
+async function deleteAccount(id) {
+  confirm2('Supprimer compte','Supprimer définitivement ce compte et toutes ses données ?', async()=>{
+    try { await api('DELETE','/api/admin/accounts/'+id); renderPage('superadmin'); toast('Compte supprimé ✓','success'); }
+    catch(e){}
+  });
+}
+
+function approveTrialForm(id, name, email) {
+  openModal('Approuver — '+name,`
+    <div style="padding:12px;background:#22c55e15;border-radius:10px;margin-bottom:14px;font-size:13px;color:#22c55e">✓ Créer compte pour: ${name} · ${email}</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Plan</label><select id="ap_plan">
+        <option value="trial">Essai 48h</option><option value="starter" selected>Starter 30j</option><option value="pro">Pro 1an</option><option value="enterprise">Enterprise</option>
+      </select></div>
+      <div class="form-field"><label>Mot de passe *</label><input id="ap_pass" value="MarocBiz2026!"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-success" onclick="approveTrial(${id})">✓ Créer le compte</button>`
+  );
+}
+
+async function approveTrial(id) {
+  const plan = document.getElementById('ap_plan').value;
+  const password = document.getElementById('ap_pass').value;
+  if (!password) return toast('MDP requis','error');
+  try {
+    const trials = await api('GET','/api/admin/trials');
+    const t = trials.find(x=>x.id==id);
+    if (!t) return;
+    await api('POST','/api/admin/accounts',{name:t.prenom+' '+t.nom,email:t.email,password,company_name:t.societe,plan});
+    closeModal(); renderPage('superadmin'); toast('Compte créé ✓ — '+t.email+' / '+password,'success');
+  } catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+// ─── TRIAL ────────────────────────────────────────────────────
+function showTrialModal() {
+  ['tr_prenom','tr_nom','tr_phone','tr_email','tr_societe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('trialErr').style.display='none';
+  document.getElementById('trialOk').style.display='none';
+  document.getElementById('trialFoot').style.display='flex';
+  document.getElementById('trialModal').classList.add('open');
+}
+
+async function submitTrial() {
+  const nom=document.getElementById('tr_nom').value.trim(), prenom=document.getElementById('tr_prenom').value.trim();
+  const phone=document.getElementById('tr_phone').value.trim(), email=document.getElementById('tr_email').value.trim();
+  const societe=document.getElementById('tr_societe').value.trim(), secteur=document.getElementById('tr_secteur').value;
+  const err=document.getElementById('trialErr');
+  err.style.display='none';
+  if (!nom||!prenom||!phone||!email||!societe) { err.textContent='Tous les champs sont obligatoires'; err.style.display='block'; return; }
+  const btn=document.getElementById('trialBtn'); btn.textContent='Envoi...'; btn.disabled=true;
+  try {
+    await api('POST','/api/trial',{nom,prenom,phone,email,societe,secteur});
+    document.getElementById('trialOk').style.display='block';
+    document.getElementById('trialFoot').style.display='none';
+  } catch(e) {
+    err.textContent=e.error||'Erreur. Réessayez.'; err.style.display='block';
+    btn.textContent='Envoyer — إرسال'; btn.disabled=false;
+  }
+}
+
+// ─── UTILS ────────────────────────────────────────────────────
+async function delItem(resource, id, label) {
+  confirm2('Supprimer', 'Supprimer '+label+' ? Action irréversible.', async()=>{
+    try {
+      await api('DELETE','/api/'+resource+'/'+id);
+      await loadAll(); renderPage(currentPage); toast('Supprimé ✓','success');
+    } catch(e) { toast(e.error||'Erreur','error'); }
+  });
+}
+
+// ─── AUTO LOGIN ───────────────────────────────────────────────
+window.onload = async () => {
+  if (token) {
+    try {
+      const data = await api('GET','/api/auth/me');
+      currentAccount = data.account;
+      LEGAL = data.legal || {};
+      await initApp();
+    } catch(e) {
+      localStorage.removeItem('marocbiz_token'); token = null;
+    }
+  }
+};
+</script>
+</body>
+</html>
