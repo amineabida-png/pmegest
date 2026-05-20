@@ -8,9 +8,7 @@ RUN npm install --build-from-source
 COPY backend/src/server.js ./
 RUN mkdir -p /app/frontend/public
 COPY frontend/public ./frontend/public
-
 RUN mkdir -p /app/data
-ENV PORT=3000
+
 ENV DATA_DIR=/app/data
-EXPOSE 3000
 CMD ["node", "server.js"]
