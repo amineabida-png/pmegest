@@ -14,7 +14,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
-app.use(express.static(path.join(__dirname, '../../frontend/public')));
+app.use(express.static(path.join(__dirname, 'frontend/public')));
 
 const db = new Database(path.join(DATA_DIR, 'pmegest.db'));
 db.pragma('journal_mode = WAL');

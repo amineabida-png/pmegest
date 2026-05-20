@@ -6,7 +6,6 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm install --build-from-source
 COPY backend/src/server.js ./
-RUN mkdir -p /app/frontend/public
 COPY frontend/public ./frontend/public
 RUN mkdir -p /app/data
 
