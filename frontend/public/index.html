@@ -4,65 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0D0910">
+<meta name="theme-color" content="#050d1a">
 <title>PMEGest.ma — Gestion PME Maroc | ERP · Paie · Facturation</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0D0910;color:#f1f5f9;font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
+body{background:#050d1a;color:#f1f5f9;font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
 input,select,textarea{font-size:16px!important;font-family:inherit}
 button{touch-action:manipulation;font-family:inherit}
 .hidden{display:none!important}
-#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 60% 30%,#0f2a4a,#0D0910)}
-.login-box{background:#1A1024;border:1px solid #2D1B33;border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
-.ll-icon{width:72px;height:72px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 60% 30%,#0f2a4a,#050d1a)}
+.login-box{background:#0a1628;border:1px solid #0f1e35;border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.ll-icon{width:72px;height:72px;background:linear-gradient(135deg,#1a5fb4,#1249a0);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
 .ll h1{font-size:24px;font-weight:900;text-align:center}
-.ll .sub{font-size:11px;color:#714B67;font-weight:700;letter-spacing:2px;text-align:center;margin-top:4px}
+.ll .sub{font-size:11px;color:#1a5fb4;font-weight:700;letter-spacing:2px;text-align:center;margin-top:4px}
 .ll .ar{font-size:13px;color:#64748b;text-align:center;direction:rtl;margin-top:4px}
 .ll .legal{font-size:10px;color:#22c55e;text-align:center;margin-top:6px;padding:3px 10px;background:#22c55e15;border-radius:20px;display:inline-block;width:100%}
 .fg{margin-bottom:16px}
 .fg label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
-.fg input,.fg select{width:100%;padding:12px 14px;background:#0F0A14;border:1px solid #2D1B33;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s}
-.fg input:focus,.fg select:focus{border-color:#714B67}
-.btn-login{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#714B67,#5C3D57);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
-.btn-trial{width:100%;padding:12px;border-radius:12px;border:1px solid #714B6740;background:#714B6710;color:#714B67;font-weight:700;font-size:14px;cursor:pointer}
+.fg input,.fg select{width:100%;padding:12px 14px;background:#06111e;border:1px solid #0f1e35;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:#1a5fb4}
+.btn-login{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#1a5fb4,#1249a0);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
+.btn-trial{width:100%;padding:12px;border-radius:12px;border:1px solid #1a5fb440;background:#1a5fb410;color:#1a5fb4;font-weight:700;font-size:14px;cursor:pointer}
 .err{color:#ef4444;font-size:13px;margin-top:10px;text-align:center;display:none}
 .divider{display:flex;align-items:center;gap:10px;margin:16px 0}
-.divider::before,.divider::after{content:"";flex:1;height:1px;background:#2D1B33}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:#0f1e35}
 .divider span{font-size:11px;color:#334155}
 #appPage{display:none}
 .app-layout{display:flex;min-height:100vh}
-.sidebar{width:250px;background:#120D17;border-right:1px solid #2D1B33;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
-.sb-header{padding:16px;border-bottom:1px solid #2D1B33;display:flex;align-items:center;gap:10px}
-.sb-icon{width:40px;height:40px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sidebar{width:250px;background:#08111e;border-right:1px solid #0f1e35;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-header{padding:16px;border-bottom:1px solid #0f1e35;display:flex;align-items:center;gap:10px}
+.sb-icon{width:40px;height:40px;background:linear-gradient(135deg,#1a5fb4,#1249a0);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .sb-title{font-size:13px;font-weight:800;color:#f1f5f9}
-.sb-sub{font-size:9px;color:#714B67;font-weight:700;letter-spacing:1px;margin-top:2px}
+.sb-sub{font-size:9px;color:#1a5fb4;font-weight:700;letter-spacing:1px;margin-top:2px}
 .sb-sub-ar{font-size:9px;color:#334155;direction:rtl;margin-top:1px}
 .sb-nav{flex:1;padding:8px 6px;overflow-y:auto}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;border:none;background:transparent;width:100%;text-align:left;border-left:3px solid transparent;transition:all .15s;margin-bottom:1px}
 .nav-item:hover{background:#ffffff08;color:#f1f5f9}
-.nav-item.active{background:#714B6715;color:#714B67;font-weight:700;border-left-color:#714B67}
+.nav-item.active{background:#1a5fb415;color:#1a5fb4;font-weight:700;border-left-color:#1a5fb4}
 .nav-item .ni{font-size:16px;flex-shrink:0;width:22px;text-align:center}
 .nav-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:auto}
-.nav-section{font-size:9px;font-weight:700;color:#2D1B33;text-transform:uppercase;letter-spacing:1px;padding:10px 12px 4px}
-.sb-footer{padding:12px;border-top:1px solid #2D1B33}
+.nav-section{font-size:9px;font-weight:700;color:#0f1e35;text-transform:uppercase;letter-spacing:1px;padding:10px 12px 4px}
+.sb-footer{padding:12px;border-top:1px solid #0f1e35}
 .user-row{display:flex;align-items:center;gap:10px}
-.user-av{width:34px;height:34px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.user-av{width:34px;height:34px;background:linear-gradient(135deg,#1a5fb4,#1249a0);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
 .user-name{font-size:12px;font-weight:700}
 .user-role{font-size:10px;color:#64748b}
 .lic-badge{margin-top:8px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;text-align:center}
 .main{margin-left:250px;flex:1;min-height:100vh}
-.topbar{height:52px;background:#120D17;border-bottom:1px solid #2D1B33;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.topbar{height:52px;background:#08111e;border-bottom:1px solid #0f1e35;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
 .tb-title{font-size:12px;font-weight:700;color:#334155}
-.tb-ar{font-size:10px;color:#2D1B33;direction:rtl}
+.tb-ar{font-size:10px;color:#0f1e35;direction:rtl}
 .tb-right{display:flex;gap:8px;align-items:center}
-.btn-logout{padding:5px 12px;border-radius:8px;border:1px solid #2D1B33;background:transparent;color:#64748b;cursor:pointer;font-size:11px}
+.btn-logout{padding:5px 12px;border-radius:8px;border:1px solid #0f1e35;background:transparent;color:#64748b;cursor:pointer;font-size:11px}
 .btn-super{padding:5px 12px;border-radius:8px;border:1px solid #f59e0b40;background:#f59e0b18;color:#f59e0b;font-weight:700;cursor:pointer;font-size:11px}
 .exp-badge{padding:4px 10px;border-radius:6px;background:#ef444418;border:1px solid #ef444430;font-size:11px;font-weight:700;color:#ef4444}
 .page{padding:28px;display:none}
 .page.active{display:block}
-.card{background:#1A1024;border:1px solid #2D1B33;border-radius:16px;padding:20px}
+.card{background:#0a1628;border:1px solid #0f1e35;border-radius:16px;padding:20px}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.stat-card{background:#1A1024;border:1px solid #2D1B33;border-radius:14px;padding:18px}
+.stat-card{background:#0a1628;border:1px solid #0f1e35;border-radius:14px;padding:18px}
 .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px}
 .stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
 .stat-lbl{font-size:11px;color:#64748b;margin-top:2px}
@@ -70,44 +70,44 @@ button{touch-action:manipulation;font-family:inherit}
 .page-title{font-size:22px;font-weight:800}
 .page-sub{font-size:12px;color:#64748b;margin-top:3px}
 .btn{padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;transition:all .15s;font-family:inherit}
-.btn-blue{background:linear-gradient(135deg,#714B67,#5C3D57);color:#fff}
-.btn-ghost{background:transparent;border:1px solid #2D1B33;color:#64748b}
-.btn-ghost:hover{border-color:#714B67;color:#714B67}
+.btn-blue{background:linear-gradient(135deg,#1a5fb4,#1249a0);color:#fff}
+.btn-ghost{background:transparent;border:1px solid #0f1e35;color:#64748b}
+.btn-ghost:hover{border-color:#1a5fb4;color:#1a5fb4}
 .btn-danger{background:#ef444418;border:1px solid #ef444430;color:#ef4444}
 .btn-success{background:#22c55e18;border:1px solid #22c55e30;color:#22c55e}
 .btn-warning{background:#f59e0b18;border:1px solid #f59e0b30;color:#f59e0b}
 .btn-sm{padding:5px 12px;font-size:11px;border-radius:7px}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;min-width:600px}
-th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #2D1B33}
-td{padding:11px 12px;font-size:13px;border-bottom:1px solid #0F0A14}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #0f1e35}
+td{padding:11px 12px;font-size:13px;border-bottom:1px solid #06111e}
 tr:hover td{background:#ffffff04}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .badge-dot{width:5px;height:5px;border-radius:50%}
 .modal-overlay{position:fixed;inset:0;background:#00000090;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
-.modal{background:#1A1024;border:1px solid #2D1B33;border-radius:20px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
-.modal-hdr{padding:20px 24px;border-bottom:1px solid #2D1B33;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#1A1024;z-index:1}
+.modal{background:#0a1628;border:1px solid #0f1e35;border-radius:20px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-hdr{padding:20px 24px;border-bottom:1px solid #0f1e35;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#0a1628;z-index:1}
 .modal-hdr h3{font-size:16px;font-weight:800}
 .modal-body{padding:24px}
 .modal-foot{padding:0 24px 24px;display:flex;gap:10px;justify-content:flex-end}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-field label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
-.form-field input,.form-field select,.form-field textarea{width:100%;padding:10px 14px;background:#0F0A14;border:1px solid #2D1B33;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s;font-family:inherit}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#714B67}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:10px 14px;background:#06111e;border:1px solid #0f1e35;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s;font-family:inherit}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#1a5fb4}
 .form-field textarea{resize:none;min-height:80px}
 .full{grid-column:1/-1}
 #confirmModal .modal{max-width:420px}
 #toastCont{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 18px;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;min-width:260px;animation:slideIn .3s ease;box-shadow:0 8px 24px #00000060}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#5C3D57}.t-warning{background:#d97706}
+.t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#1249a0}.t-warning{background:#d97706}
 .bulletin-section{background:#ffffff06;border-radius:12px;padding:16px;margin-bottom:12px}
 .bulletin-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff06;font-size:13px}
-.bulletin-total{background:#714B6715;border:1px solid #714B6730;border-radius:10px;padding:14px;text-align:right}
+.bulletin-total{background:#1a5fb415;border:1px solid #1a5fb430;border-radius:10px;padding:14px;text-align:right}
 .legal-note{font-size:10px;color:#22c55e;margin-top:4px}
 @media(max-width:768px){.sidebar{width:56px}.sb-title,.sb-sub,.sb-sub-ar,.nav-item span:not(.ni),.user-name,.user-role,.lic-badge,.nav-section,.nav-badge{display:none}.main{margin-left:56px}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.page{padding:14px}}
-@media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #2D1B33;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0;scrollbar-width:none}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#714B67;background:#714B6710}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.stats-grid{gap:8px}.page-header{flex-direction:column;align-items:flex-start}}
+@media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #0f1e35;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0;scrollbar-width:none}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#1a5fb4;background:#1a5fb410}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.stats-grid{gap:8px}.page-header{flex-direction:column;align-items:flex-start}}
 @supports(padding-bottom:env(safe-area-inset-bottom)){@media(max-width:480px){.sidebar{padding-bottom:env(safe-area-inset-bottom)}.main{margin-bottom:calc(56px + env(safe-area-inset-bottom))}}}
 </style>
 </head>
@@ -220,6 +220,221 @@ tr:hover td{background:#ffffff04}
   </div>
 </div>
 <script>
+
+// ─── STATE ────────────────────────────────────────────────────
+let token = localStorage.getItem('pmegest_token');
+let currentAccount = null;
+let currentPage = 'dashboard';
+let state = { tiers:[], articles:[], documents:[], employes:[], bulletins:[], conges:[], tresorerie:[], crm:[], alertes:[] };
+let LEGAL = {};
+let ligneCount = 0;
+
+// ─── API ──────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw data;
+  return data;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────
+const fmtMAD = n => Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' MAD';
+const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-MA') : '—';
+const r2 = n => Math.round((n||0)*100)/100;
+
+const STATUS = {
+  brouillon:{c:'#64748b',l:'Brouillon'},envoye:{c:'#1a5fb4',l:'Envoyé'},
+  valide:{c:'#22c55e',l:'Validé'},paye:{c:'#22c55e',l:'Payé'},
+  partiel:{c:'#f59e0b',l:'Partiel'},annule:{c:'#ef4444',l:'Annulé'},
+  en_attente:{c:'#f59e0b',l:'En attente'},approuve:{c:'#22c55e',l:'Approuvé'},
+  refuse:{c:'#ef4444',l:'Refusé'},nouveau:{c:'#1a5fb4',l:'Nouveau'},
+  contacte:{c:'#f59e0b',l:'Contacté'},negocie:{c:'#a855f7',l:'En négociation'},
+  gagne:{c:'#22c55e',l:'Gagné'},perdu:{c:'#ef4444',l:'Perdu'},
+  actif:{c:'#22c55e',l:'Actif'},archive:{c:'#64748b',l:'Archivé'}
+};
+
+function badge(st) {
+  const s = STATUS[st] || {c:'#64748b',l:st};
+  return `<span class="badge" style="background:${s.c}20;color:${s.c}"><span class="badge-dot" style="background:${s.c}"></span>${s.l}</span>`;
+}
+
+function toast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className = 'toast t-'+type;
+  t.textContent = msg;
+  t.onclick = () => t.remove();
+  document.getElementById('toastCont').appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function confirm2(title, msg, cb) {
+  document.getElementById('confTitle').textContent = title;
+  document.getElementById('confMsg').textContent = msg;
+  document.getElementById('confirmModal').classList.add('open');
+  document.getElementById('confBtn').onclick = () => { cb(); document.getElementById('confirmModal').classList.remove('open'); };
+}
+
+function openModal(title, body, foot) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalFoot').innerHTML = foot;
+  document.getElementById('mainModal').classList.add('open');
+}
+function closeModal() { document.getElementById('mainModal').classList.remove('open'); }
+
+// ─── AUTH ─────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.style.display = 'none';
+  try {
+    const data = await api('POST', '/api/auth/login', {email, password: pass});
+    token = data.token;
+    LEGAL = data.legal || {};
+    localStorage.setItem('pmegest_token', token);
+    currentAccount = data.account;
+    await initApp();
+  } catch(e) {
+    err.textContent = e.error || 'Erreur de connexion';
+    err.style.display = 'block';
+  }
+}
+document.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+function doLogout() {
+  localStorage.removeItem('pmegest_token');
+  token = null; currentAccount = null;
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appPage').style.display = 'none';
+}
+
+async function initApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'block';
+  const name = currentAccount.name;
+  document.getElementById('userAv').textContent = name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userRole').textContent = currentAccount.company_name || (currentAccount.role==='super'?'Super Admin':'Client');
+  const lic = document.getElementById('licBadge');
+  const btnS = document.getElementById('btnSuper');
+  if (currentAccount.role === 'super') {
+    lic.textContent = 'Super Admin';
+    lic.style.cssText = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b30';
+    btnS.classList.remove('hidden'); btnS.style.display='inline-block';
+  } else if (currentAccount.plan === 'enterprise') {
+    lic.textContent = 'Enterprise';
+    lic.style.cssText = 'background:#22c55e20;color:#22c55e;border:1px solid #22c55e30';
+  } else {
+    const days = Math.max(0,Math.ceil((new Date(currentAccount.expires_at)-new Date())/86400000));
+    lic.textContent = days+'j restants';
+    lic.style.cssText = days<=7?'background:#ef444418;color:#ef4444;border:1px solid #ef444430':'background:#1a5fb418;color:#1a5fb4;border:1px solid #1a5fb430';
+  }
+  buildSidebar();
+  await loadAll();
+  showPage('dashboard');
+}
+
+function buildSidebar() {
+  const isSuper = currentAccount.role === 'super';
+  const items = [
+    {s:'PRINCIPAL'},{id:'dashboard',icon:'📊',label:'Dashboard — لوحة التحكم'},
+    {s:'COMMERCIAL'},{id:'facturation',icon:'💰',label:'Facturation — الفواتير'},
+    {id:'devis',icon:'📋',label:'Devis — عروض الأسعار'},
+    {id:'clients',icon:'👥',label:'Clients — الزبائن'},
+    {id:'fournisseurs',icon:'🏪',label:'Fournisseurs — الموردون'},
+    {id:'articles',icon:'📦',label:'Articles & Stock'},
+    {s:'RH & PAIE'},{id:'employes',icon:'👤',label:'Employés — الموظفون'},
+    {id:'paie',icon:'💼',label:'Paie LF 2026'},
+    {id:'conges',icon:'🏖',label:'Congés — الإجازات'},
+    {s:'FINANCE'},{id:'tresorerie',icon:'🏦',label:'Trésorerie — الخزينة'},
+    {id:'crm',icon:'🎯',label:'CRM Prospects'},
+    {s:'RAPPORTS'},{id:'rapports',icon:'📈',label:'Rapports — التقارير'},
+    {id:'alertes',icon:'🔔',label:'Alertes',badge:true},
+    {id:'parametres',icon:'⚙',label:'Paramètres'},
+  ];
+  if (isSuper) { items.push({s:'ADMIN'}); items.push({id:'superadmin',icon:'👑',label:'Super Admin'}); }
+  document.getElementById('sidebarNav').innerHTML = items.map(it => {
+    if (it.s) return `<div class="nav-section">${it.s}</div>`;
+    return `<button class="nav-item" id="nav-${it.id}" onclick="showPage('${it.id}')">
+      <span class="ni">${it.icon}</span><span>${it.label}</span>
+      ${it.badge?'<span class="nav-badge hidden" id="alertBadge">0</span>':''}
+    </button>`;
+  }).join('');
+}
+
+async function loadAll() {
+  try {
+    const eps = ['tiers','articles','documents','employes','bulletins','conges','tresorerie','crm','alertes'];
+    const res = await Promise.all(eps.map(e => api('GET', '/api/'+e)));
+    eps.forEach((e,i) => state[e] = res[i]);
+    const unread = state.alertes.filter(a=>!a.lu).length;
+    const ab = document.getElementById('alertBadge');
+    if (ab) { ab.textContent = unread; ab.classList.toggle('hidden', unread===0); }
+  } catch(e) { console.error(e); }
+}
+
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  const el = document.getElementById('page-'+p);
+  const nav = document.getElementById('nav-'+p);
+  if (el) el.classList.add('active');
+  if (nav) nav.classList.add('active');
+  currentPage = p;
+  renderPage(p);
+}
+
+function renderPage(p) {
+  const el = document.getElementById('page-'+p);
+  if (!el) return;
+  const map = {
+    dashboard:renderDashboard,
+    facturation:()=>renderDocs('facture','Facturation 💰','الفواتير',el),
+    devis:()=>renderDocs('devis','Devis 📋','عروض الأسعار',el),
+    clients:()=>renderTiers('client',el),
+    fournisseurs:()=>renderTiers('fournisseur',el),
+    articles:renderArticles,employes:renderEmployes,paie:renderPaie,
+    conges:renderConges,tresorerie:renderTresorerie,crm:renderCRM,
+    rapports:renderRapports,alertes:renderAlertes,
+    parametres:renderParametres,superadmin:renderSuperAdmin
+  };
+  if (map[p]) map[p](el);
+}
+
+async function delItem(resource, id, label) {
+  confirm2('Supprimer','Supprimer '+label+' ?', async()=>{
+    try { await api('DELETE','/api/'+resource+'/'+id); await loadAll(); renderPage(currentPage); toast('Supprimé ✓','success'); }
+    catch(e) { toast(e.error||'Erreur','error'); }
+  });
+}
+
+function showTrialModal() {
+  ['tr_prenom','tr_nom','tr_phone','tr_email','tr_societe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('trialErr').style.display='none';
+  document.getElementById('trialOk').style.display='none';
+  document.getElementById('trialFoot').style.display='flex';
+  document.getElementById('trialModal').classList.add('open');
+}
+
+async function submitTrial() {
+  const nom=document.getElementById('tr_nom').value.trim(), prenom=document.getElementById('tr_prenom').value.trim();
+  const phone=document.getElementById('tr_phone').value.trim(), email=document.getElementById('tr_email').value.trim();
+  const societe=document.getElementById('tr_societe').value.trim(), secteur=document.getElementById('tr_secteur').value;
+  const err=document.getElementById('trialErr'); err.style.display='none';
+  if (!nom||!prenom||!phone||!email||!societe){err.textContent='Tous les champs requis';err.style.display='block';return;}
+  const btn=document.getElementById('trialBtn'); btn.textContent='Envoi...'; btn.disabled=true;
+  try {
+    await api('POST','/api/trial',{nom,prenom,phone,email,societe,secteur});
+    document.getElementById('trialOk').style.display='block';
+    document.getElementById('trialFoot').style.display='none';
+  } catch(e) { err.textContent=e.error||'Erreur'; err.style.display='block'; btn.textContent='Envoyer'; btn.disabled=false; }
+}
+
+
 function renderCRM(el) {
   if (!el) el = document.getElementById('page-crm');
   const prospects = state.crm || [];
@@ -237,13 +452,13 @@ function renderCRM(el) {
         const ps = prospects.filter(p=>p.statut===st);
         const val = ps.reduce((a,p)=>a+p.valeur_estimee,0);
         const s = STATUS[st]||{c:'#64748b',l:st};
-        return `<div style="min-width:200px;flex:1;background:#1A1024;border:1px solid #2D1B33;border-top:3px solid ${s.c};border-radius:12px;padding:14px">
+        return `<div style="min-width:200px;flex:1;background:#0a1628;border:1px solid #0f1e35;border-top:3px solid ${s.c};border-radius:12px;padding:14px">
           <div style="font-size:12px;font-weight:700;color:${s.c};margin-bottom:8px">${s.l} (${ps.length})</div>
           <div style="font-size:11px;color:#64748b;margin-bottom:10px">${fmtMAD(val)}</div>
-          ${ps.map(p=>`<div onclick="crmForm(${p.id})" style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid #2D1B33">
+          ${ps.map(p=>`<div onclick="crmForm(${p.id})" style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid #0f1e35">
             <div style="font-size:13px;font-weight:700">${p.nom}</div>
             <div style="font-size:11px;color:#64748b">${p.societe||''}</div>
-            <div style="font-size:12px;color:#714B67;font-weight:700;margin-top:4px">${fmtMAD(p.valeur_estimee)} · ${p.probabilite}%</div>
+            <div style="font-size:12px;color:#1a5fb4;font-weight:700;margin-top:4px">${fmtMAD(p.valeur_estimee)} · ${p.probabilite}%</div>
           </div>`).join('')}
         </div>`;
       }).join('')}
@@ -315,7 +530,7 @@ function renderRapports(el) {
     </div>
     <div class="stats-grid" style="margin-bottom:20px">
       ${[
-        ['💰','CA TTC total',fmtMAD(ca),'#714B67'],
+        ['💰','CA TTC total',fmtMAD(ca),'#1a5fb4'],
         ['📊','CA HT (base fiscale)',fmtMAD(ca_ht),'#7c3aed'],
         ['🧾','TVA collectée',fmtMAD(tva),'#f59e0b'],
         ['⏳','Créances impayées',fmtMAD(impaye),'#ef4444'],
@@ -336,10 +551,10 @@ function renderRapports(el) {
           return sorted.map(([nom,val])=>`
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <div style="width:110px;font-size:11px;font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nom}</div>
-              <div style="flex:1;height:7px;background:#2D1B33;border-radius:4px">
-                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#714B67,#A77B9A);width:${(val/max*100).toFixed(0)}%"></div>
+              <div style="flex:1;height:7px;background:#0f1e35;border-radius:4px">
+                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#1a5fb4,#5a9fd4);width:${(val/max*100).toFixed(0)}%"></div>
               </div>
-              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#714B67;flex-shrink:0">${fmtMAD(val)}</div>
+              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#1a5fb4;flex-shrink:0">${fmtMAD(val)}</div>
             </div>`).join('') || '<p style="color:#64748b;font-size:13px">Aucune donnée</p>';
         })()}
       </div>
@@ -350,7 +565,7 @@ function renderRapports(el) {
             ['TVA mensuelle','SIMPL-TVA · tax.gov.ma','Le 20 du mois suivant','#f59e0b'],
             ['IS trimestriel','Acompte 25%/trimestre','Le 31/03, 30/06, 30/09, 31/12','#f97316'],
             ['CNSS mensuel','Damancom · cnss.ma','Le 10 du mois suivant','#22c55e'],
-            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#714B67'],
+            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#1a5fb4'],
             ['Décl. annuelle IR','Modèle 9421 · DGI','Avant le 28 février','#7c3aed'],
           ].map(([t,p,d,c])=>`<div style="padding:8px;background:#ffffff04;border-radius:8px;margin-bottom:6px;border-left:3px solid ${c}">
             <div style="font-size:12px;font-weight:700;color:${c}">${t}</div>
@@ -363,8 +578,8 @@ function renderRapports(el) {
             ['TVA normal','20%'],['TVA réduit','10% · 14%'],['TVA super réduit','7%'],
             ['CNSS salarié','4.48% (plaf. 6 000 MAD)'],['AMO salarié','2.26%'],
             ['CNSS patronal','8.98% + AF 6.40%'],['SMIG','3 422 MAD/mois'],
-          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #0F0A14;font-size:12px">
-            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#714B67">${v}</span>
+          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #06111e;font-size:12px">
+            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#1a5fb4">${v}</span>
           </div>`).join('')}
         </div>
       </div>
@@ -385,9 +600,9 @@ function renderAlertes(el) {
     <div style="display:flex;flex-direction:column;gap:8px">
       ${alertes.length===0?'<div class="card" style="text-align:center;color:#64748b;padding:40px">Aucune alerte — لا توجد تنبيهات</div>':
       alertes.map(a=>{
-        const colors = {info:'#714B67',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
+        const colors = {info:'#1a5fb4',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
         const c = colors[a.type]||'#64748b';
-        return `<div style="background:#1A1024;border:1px solid #2D1B33;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
+        return `<div style="background:#0a1628;border:1px solid #0f1e35;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
           <div style="width:38px;height:38px;background:${c}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
             ${a.type==='error'?'🔴':a.type==='warning'?'🟡':a.type==='success'?'🟢':'🔵'}
           </div>
@@ -451,7 +666,7 @@ function renderParametres(el) {
           ['TVA normal','20%','Art.89 CGI'],
         ].map(([l,v,d])=>`<div style="padding:10px;background:#ffffff04;border-radius:8px">
           <div style="font-size:11px;color:#64748b">${l}</div>
-          <div style="font-size:16px;font-weight:700;color:#714B67">${v}</div>
+          <div style="font-size:16px;font-weight:700;color:#1a5fb4">${v}</div>
           <div style="font-size:10px;color:#334155">${d}</div>
         </div>`).join('')}
       </div>
@@ -493,12 +708,12 @@ async function renderSuperAdmin(el) {
       <button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button>
     </div>
     ${pending.length>0?`
-    <div class="card" style="border:1px solid #714B6740;margin-bottom:16px">
-      <div style="font-size:14px;font-weight:700;color:#714B67;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
+    <div class="card" style="border:1px solid #1a5fb440;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#1a5fb4;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
       ${pending.map(r=>`
         <div style="padding:12px;background:#ffffff06;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#714B67">${r.societe}</span></div>
+            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#1a5fb4">${r.societe}</span></div>
             <div style="font-size:12px;color:#64748b">${r.email} · ${r.phone} · ${r.secteur||'—'}</div>
           </div>
           <div style="display:flex;gap:8px">
@@ -517,7 +732,7 @@ async function renderSuperAdmin(el) {
               <td style="font-weight:700">${a.name}</td>
               <td style="font-size:12px;color:#64748b">${a.email}</td>
               <td style="font-size:12px">${a.company_name||'—'}</td>
-              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#714B6715':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#714B67':'#f59e0b'}">${a.plan}</span></td>
+              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#1a5fb415':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#1a5fb4':'#f59e0b'}">${a.plan}</span></td>
               <td style="font-size:12px;color:${exp?'#ef4444':'#64748b'}">${a.expires_at?.slice(0,10)||'—'} (${days})</td>
               <td>${badge(a.status==='active'?'actif':'archive')}</td>
               <td style="font-size:11px;color:#334155">${a.last_login?.slice(0,16)||'Jamais'}</td>
