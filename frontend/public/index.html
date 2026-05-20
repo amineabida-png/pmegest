@@ -892,6 +892,781 @@ window.onload = async () => {
     }
   }
 };
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+async function renderDashboard(el) {
+  if (!el) el = document.getElementById('page-dashboard');
+  let stats = {};
+  try { stats = await api('GET', '/api/dashboard'); } catch(e){}
+  el.innerHTML = `
+    <div style="margin-bottom:22px">
+      <div class="page-title">📊 Dashboard — لوحة التحكم</div>
+      <div class="page-sub">Conforme LF 2026 · Bonjour, ${currentAccount.name}</div>
+    </div>
+    <div class="stats-grid">
+      ${[
+        ['💰','CA ce mois',fmtMAD(stats.ca_mois||0),'#1a5fb4'],
+        ['📅','CA cette année',fmtMAD(stats.ca_annee||0),'#7c3aed'],
+        ['⏳','Impayé',fmtMAD(stats.impaye||0),'#ef4444'],
+        ['👥','Clients',stats.nb_clients||0,'#22c55e'],
+        ['👤','Employés',stats.nb_employes||0,'#f59e0b'],
+        ['💼','Masse salariale',fmtMAD(stats.masse_salariale||0),'#f97316'],
+        ['📦','Stock alerte',stats.stock_alerte||0,'#ef4444'],
+        ['🔔','Alertes',stats.alertes_non_lues||0,'#f59e0b'],
+      ].map(([i,l,v,c])=>`<div class="stat-card">
+        <div class="stat-icon" style="background:${c}18">${i}</div>
+        <div class="stat-val" style="color:${c}">${v}</div>
+        <div class="stat-lbl">${l}</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">CA mensuel (12 mois)</div>
+        ${(stats.ca_par_mois||[]).length>0?`<div style="display:flex;align-items:flex-end;gap:4px;height:80px">
+          ${(stats.ca_par_mois||[]).map(m=>{const max=Math.max(...(stats.ca_par_mois||[]).map(x=>x.ca),1);const h=Math.round((m.ca/max)*100);
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="width:100%;height:${h}px;background:linear-gradient(to top,#1a5fb4,#5a9fd4);border-radius:3px 3px 0 0;min-height:2px" title="${fmtMAD(m.ca)}"></div>
+            <div style="font-size:8px;color:#334155">${m.mois?.slice(5)||''}</div>
+          </div>`;}).join('')}
+        </div>`:'<p style="color:#64748b;font-size:13px">Aucune donnée</p>'}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ Échéances légales</div>
+          <div style="padding:8px;background:#22c55e15;border-radius:8px;margin-bottom:6px">
+            <div style="font-size:11px;color:#22c55e;font-weight:700">CNSS — le ${new Date().getMonth()+2}/2026</div>
+            <div style="font-size:10px;color:#64748b">CNSS + AMO · Damancom</div>
+          </div>
+          <div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:6px">
+            <div style="font-size:11px;color:#1a5fb4;font-weight:700">IR — le ${new Date().getMonth()+2}/2026</div>
+            <div style="font-size:10px;color:#64748b">Retenue source · DGI SIMPL-IR</div>
+          </div>
+          <div style="padding:8px;background:#f59e0b15;border-radius:8px">
+            <div style="font-size:11px;color:#f59e0b;font-weight:700">SMIG 2026: ${LEGAL.SMIG||3422} MAD</div>
+            <div style="font-size:10px;color:#64748b">Art.356 Code travail</div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚡ Actions rapides</div>
+          <button class="btn btn-blue" style="width:100%;margin-bottom:6px" onclick="showPage('facturation')">💰 Nouvelle facture</button>
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="showPage('devis')">📋 Nouveau devis</button>
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="showPage('paie')">💼 Bulletins paie</button>
+          <button class="btn btn-ghost" style="width:100%" onclick="showPage('clients')">👥 Nouveau client</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── TIERS ────────────────────────────────────────────────────
+function renderTiers(type, el) {
+  if (!el) el = document.getElementById('page-'+(type==='client'?'clients':'fournisseurs'));
+  const icon = type==='client'?'👥':'🏪';
+  const list = state.tiers.filter(t=>t.type===type||t.type==='les_deux');
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">${icon} ${type==='client'?'Clients — الزبائن':'Fournisseurs — الموردون'}</div>
+      <div class="page-sub">${list.length} tiers · ICE obligatoire CGI Art.145</div></div>
+      <button class="btn btn-blue" onclick="tiersForm(null,'${type}')">+ Ajouter</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Raison sociale</th><th>ICE</th><th>IF</th><th>Ville</th><th>Tél</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(t=>`<tr>
+        <td><div style="font-weight:700">${t.raison_sociale}</div><div style="font-size:11px;color:#64748b">${t.email||''}</div></td>
+        <td style="font-family:monospace;font-size:12px">${t.ice||'—'}</td>
+        <td style="font-size:12px">${t.if_fiscal||'—'}</td>
+        <td style="font-size:12px">${t.ville||'—'}</td>
+        <td style="font-size:12px">${t.tel||'—'}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="tiersForm(${t.id},'${type}')">Modifier</button>
+          <button class="btn btn-success btn-sm" onclick="showPage('facturation')">Facture</button>
+          <button class="btn btn-danger btn-sm" onclick="delItem('tiers',${t.id},'ce tiers')">✕</button>
+        </div></td>
+      </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucun ${type}</td></tr>`}
+      </tbody>
+    </table></div></div>`;
+}
+
+function tiersForm(id, defaultType) {
+  const t = id?state.tiers.find(x=>x.id==id):{};
+  openModal(id?'Modifier tiers':'Nouveau tiers',`
+    <div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1a5fb4">
+      ⚖️ ICE obligatoire pour déductibilité TVA (CGI Art.145)
+    </div>
+    <div class="form-grid">
+      <div class="form-field full"><label>Raison sociale *</label><input id="t_rs" value="${t.raison_sociale||''}" placeholder="ALAMI COMMERCE SARL"></div>
+      <div class="form-field"><label>Type</label><select id="t_type">
+        <option value="client" ${(t.type||defaultType)==='client'?'selected':''}>Client</option>
+        <option value="fournisseur" ${(t.type||defaultType)==='fournisseur'?'selected':''}>Fournisseur</option>
+        <option value="les_deux" ${t.type==='les_deux'?'selected':''}>Les deux</option>
+      </select></div>
+      <div class="form-field"><label>ICE (15 chiffres)</label><input id="t_ice" value="${t.ice||''}" maxlength="15" placeholder="001234567890123"></div>
+      <div class="form-field"><label>IF Fiscal</label><input id="t_if" value="${t.if_fiscal||''}" placeholder="12345678"></div>
+      <div class="form-field"><label>RC</label><input id="t_rc" value="${t.rc||''}" placeholder="12345/Casa"></div>
+      <div class="form-field"><label>Téléphone</label><input id="t_tel" value="${t.tel||''}" placeholder="0522123456"></div>
+      <div class="form-field"><label>Email</label><input type="email" id="t_email" value="${t.email||''}" placeholder="contact@societe.ma"></div>
+      <div class="form-field"><label>Ville</label><input id="t_ville" value="${t.ville||''}" placeholder="Casablanca"></div>
+      <div class="form-field full"><label>Adresse</label><input id="t_adr" value="${t.adresse||''}" placeholder="Rue Mohammed V"></div>
+      <div class="form-field full"><label>Notes</label><textarea id="t_notes">${t.notes||''}</textarea></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveTiers(${id||0})">${id?'Enregistrer':'Ajouter'}</button>`
+  );
+}
+
+async function saveTiers(id) {
+  const d={type:document.getElementById('t_type').value,raison_sociale:document.getElementById('t_rs').value,ice:document.getElementById('t_ice').value,if_fiscal:document.getElementById('t_if').value,rc:document.getElementById('t_rc').value,tel:document.getElementById('t_tel').value,email:document.getElementById('t_email').value,ville:document.getElementById('t_ville').value,adresse:document.getElementById('t_adr').value,notes:document.getElementById('t_notes').value};
+  if(!d.raison_sociale) return toast('Raison sociale requise','error');
+  try{if(id)await api('PUT','/api/tiers/'+id,d);else await api('POST','/api/tiers',d);closeModal();await loadAll();renderPage(currentPage);toast('Tiers sauvegardé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── ARTICLES ─────────────────────────────────────────────────
+function renderArticles(el) {
+  if (!el) el = document.getElementById('page-articles');
+  const arts = state.articles||[];
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">📦 Articles & Stock</div>
+      <div class="page-sub">${arts.length} article(s) · ${arts.filter(a=>a.stock_actuel<=a.stock_min&&a.stock_min>0).length} en alerte</div></div>
+      <button class="btn btn-blue" onclick="articleForm()">+ Ajouter</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Code</th><th>Désignation</th><th>Type</th><th>Prix HT</th><th>TVA</th><th>Stock</th><th>Actions</th></tr></thead>
+      <tbody>${arts.map(a=>`<tr style="${a.stock_actuel<=a.stock_min&&a.stock_min>0?'background:#ef444408':''}">
+        <td style="font-family:monospace;font-size:12px">${a.code}</td>
+        <td style="font-weight:600">${a.designation}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;background:#1a5fb415;color:#1a5fb4;font-size:11px">${a.type}</span></td>
+        <td style="font-weight:700;color:#1a5fb4">${fmtMAD(a.prix_vente_ht)}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;background:#f59e0b15;color:#f59e0b;font-size:11px">${a.taux_tva}%</span></td>
+        <td style="font-weight:700;color:${a.stock_actuel<=a.stock_min&&a.stock_min>0?'#ef4444':'#22c55e'}">${a.stock_actuel} ${a.unite}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="articleForm(${a.id})">Modifier</button>
+          <button class="btn btn-danger btn-sm" onclick="delItem('articles',${a.id},'cet article')">✕</button>
+        </div></td>
+      </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">Aucun article</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function articleForm(id) {
+  const a=id?state.articles.find(x=>x.id==id):{};
+  openModal(id?'Modifier article':'Nouvel article',`
+    <div class="form-grid">
+      <div class="form-field"><label>Code *</label><input id="a_code" value="${a.code||''}" placeholder="ART-001"></div>
+      <div class="form-field"><label>Type</label><select id="a_type"><option value="produit" ${a.type!=='service'?'selected':''}>Produit</option><option value="service" ${a.type==='service'?'selected':''}>Service</option></select></div>
+      <div class="form-field full"><label>Désignation *</label><input id="a_des" value="${a.designation||''}" placeholder="Nom du produit"></div>
+      <div class="form-field"><label>Unité</label><select id="a_unite">${['U','kg','L','m','m²','h','j','Forfait'].map(u=>`<option ${a.unite===u?'selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="form-field"><label>TVA %</label><select id="a_tva">${[0,7,10,14,20].map(t=>`<option value="${t}" ${a.taux_tva==t?'selected':''}>${t}%</option>`).join('')}</select></div>
+      <div class="form-field"><label>Prix achat HT</label><input type="number" id="a_pa" value="${a.prix_achat||0}" step="0.01"></div>
+      <div class="form-field"><label>Prix vente HT *</label><input type="number" id="a_pv" value="${a.prix_vente_ht||0}" step="0.01"></div>
+      <div class="form-field"><label>Stock actuel</label><input type="number" id="a_stock" value="${a.stock_actuel||0}"></div>
+      <div class="form-field"><label>Stock min (alerte)</label><input type="number" id="a_smin" value="${a.stock_min||0}"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveArticle(${id||0})">${id?'Enregistrer':'Ajouter'}</button>`
+  );
+}
+
+async function saveArticle(id) {
+  const d={code:document.getElementById('a_code').value,designation:document.getElementById('a_des').value,type:document.getElementById('a_type').value,unite:document.getElementById('a_unite').value,taux_tva:+document.getElementById('a_tva').value,prix_achat:+document.getElementById('a_pa').value,prix_vente_ht:+document.getElementById('a_pv').value,stock_actuel:+document.getElementById('a_stock').value,stock_min:+document.getElementById('a_smin').value};
+  if(!d.code||!d.designation)return toast('Code et désignation requis','error');
+  try{if(id)await api('PUT','/api/articles/'+id,d);else await api('POST','/api/articles',d);closeModal();await loadAll();renderPage('articles');toast('Article sauvegardé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── DOCUMENTS ────────────────────────────────────────────────
+function renderDocs(type, label, arLabel, el) {
+  if (!el) el = document.getElementById('page-'+(type==='facture'?'facturation':'devis'));
+  const docs = state.documents.filter(d=>d.type===type);
+  const totalTTC = docs.filter(d=>d.statut==='valide').reduce((a,d)=>a+d.total_ttc,0);
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">${label} — ${arLabel}</div>
+      <div class="page-sub">Total validé: ${fmtMAD(totalTTC)} · Numérotation auto CGI Art.145</div></div>
+      <button class="btn btn-blue" onclick="docForm(null,'${type}')">+ Nouveau</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>ICE</th><th>HT</th><th>TVA</th><th>TTC</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>${docs.map(d=>`<tr>
+        <td style="font-weight:800;color:#1a5fb4;font-family:monospace;font-size:12px">${d.numero}</td>
+        <td style="font-size:12px">${fmtDate(d.date_doc)}</td>
+        <td style="font-weight:600">${d.tiers_nom||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;color:#64748b">${d.tiers_ice||'—'}</td>
+        <td style="font-size:12px">${fmtMAD(d.total_ht)}</td>
+        <td style="font-size:12px;color:#f59e0b">${fmtMAD(d.total_tva)}</td>
+        <td style="font-weight:800;color:#1a5fb4">${fmtMAD(d.total_ttc)}</td>
+        <td>${badge(d.statut)}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="docForm('${d.id}','${type}')">Voir</button>
+          ${d.statut!=='valide'?`<button class="btn btn-blue btn-sm" onclick="validerDoc('${d.id}')">✓</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="delItem('documents','${d.id}','ce document')">✕</button>
+        </div></td>
+      </tr>`).join('')||`<tr><td colspan="9" style="text-align:center;color:#64748b;padding:30px">Aucun document</td></tr>`}
+      </tbody>
+    </table></div></div>`;
+}
+
+async function docForm(id, type) {
+  const doc = id?await api('GET','/api/documents/'+id):null;
+  const t = doc||{};
+  const tiers = state.tiers.filter(x=>x.type==='client'||x.type==='les_deux');
+  const today = new Date().toISOString().split('T')[0];
+  ligneCount = 0;
+  const lignesHtml = (doc?.lignes||[{}]).map((l,i)=>{ligneCount++;return `<div id="ligne_${i}" style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:6px;align-items:end">
+    <div class="form-field"><label style="display:${i===0?'block':'none'}">Désignation</label><input id="des_${i}" value="${l.designation||''}" placeholder="Description..." style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()"></div>
+    <div class="form-field"><label style="display:${i===0?'block':'none'}">Qté</label><input type="number" id="qty_${i}" value="${l.quantite||1}" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()"></div>
+    <div class="form-field"><label style="display:${i===0?'block':'none'}">PU HT</label><input type="number" id="pu_${i}" value="${l.prix_unit_ht||0}" step="0.01" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()"></div>
+    <div class="form-field"><label style="display:${i===0?'block':'none'}">TVA%</label><select id="tva_${i}" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" onchange="updateTotaux()">${[0,7,10,14,20].map(v=>`<option value="${v}" ${(l.taux_tva||20)==v?'selected':''}>${v}%</option>`).join('')}</select></div>
+    <button onclick="document.getElementById('ligne_${i}').remove();updateTotaux()" style="background:#ef444420;border:1px solid #ef444440;color:#ef4444;border-radius:8px;padding:8px 10px;cursor:pointer;${i===0?'margin-top:20px':''}">✕</button>
+  </div>`;}).join('');
+
+  openModal(id?`Modifier ${t.type}`:`Nouveau ${type==='facture'?'facture':'devis'}`,`
+    <div class="form-grid">
+      <div class="form-field"><label>Client</label><select id="d_tiers" onchange="fillTiersInfo()">
+        <option value="">-- Choisir --</option>
+        ${tiers.map(t=>`<option value="${t.id}" data-ice="${t.ice||''}" data-if="${t.if_fiscal||''}" data-nom="${t.raison_sociale}" ${(doc?.tiers_id)==t.id?'selected':''}>${t.raison_sociale}</option>`).join('')}
+      </select></div>
+      <div class="form-field"><label>Date *</label><input type="date" id="d_date" value="${t.date_doc||today}"></div>
+      <div class="form-field"><label>Échéance</label><input type="date" id="d_ech" value="${t.date_echeance||''}"></div>
+      <div class="form-field"><label>Mode paiement</label><select id="d_pay">${['virement','cheque','especes','carte'].map(p=>`<option ${t.mode_paiement===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-field"><label>ICE Client</label><input id="d_ice" value="${t.tiers_ice||''}" readonly style="background:#050d1a;color:#64748b"></div>
+      <div class="form-field"><label>Statut</label><select id="d_stat">${['brouillon','envoye','valide'].map(s=>`<option value="${s}" ${t.statut===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div style="font-size:13px;font-weight:700;margin:14px 0 8px">Lignes</div>
+    <div id="lignesContainer">${lignesHtml}</div>
+    <button onclick="addLigne()" style="background:transparent;border:1px dashed #0f1e35;color:#1a5fb4;padding:8px 16px;border-radius:8px;cursor:pointer;width:100%;margin-top:6px;font-size:13px">+ Ligne</button>
+    <div style="margin-top:12px;padding:12px;background:#1a5fb410;border-radius:10px;text-align:right">
+      <div style="font-size:13px">HT: <strong id="prev_ht">0 MAD</strong> · TVA: <strong id="prev_tva">0 MAD</strong></div>
+      <div style="font-size:18px;font-weight:800;color:#1a5fb4;margin-top:4px">TTC: <strong id="prev_ttc">0 MAD</strong></div>
+    </div>
+    <div class="form-field" style="margin-top:10px"><label>Notes</label><textarea id="d_notes">${t.notes||''}</textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveDoc('${id||''}','${type}')">${id?'Enregistrer':'Créer'}</button>`
+  );
+  updateTotaux();
+}
+
+function fillTiersInfo() {
+  const sel = document.getElementById('d_tiers');
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  const iceEl = document.getElementById('d_ice');
+  if (iceEl) iceEl.value = opt.getAttribute('data-ice')||'';
+}
+
+function addLigne() {
+  const i = ligneCount++;
+  const div = document.createElement('div');
+  div.id = 'ligne_'+i;
+  div.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:6px;align-items:end';
+  div.innerHTML = `
+    <input id="des_${i}" placeholder="Désignation..." style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()">
+    <input type="number" id="qty_${i}" value="1" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()">
+    <input type="number" id="pu_${i}" value="0" step="0.01" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()">
+    <select id="tva_${i}" style="width:100%;padding:8px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" onchange="updateTotaux()">${[0,7,10,14,20].map(v=>`<option value="${v}" ${v===20?'selected':''}>${v}%</option>`).join('')}</select>
+    <button onclick="this.parentElement.remove();updateTotaux()" style="background:#ef444420;border:1px solid #ef444440;color:#ef4444;border-radius:8px;padding:8px 10px;cursor:pointer">✕</button>`;
+  document.getElementById('lignesContainer').appendChild(div);
+}
+
+function updateTotaux() {
+  let ht=0,tva=0;
+  for(let i=0;i<ligneCount+10;i++){
+    const qty=+document.getElementById('qty_'+i)?.value||0;
+    const pu=+document.getElementById('pu_'+i)?.value||0;
+    const tv=+document.getElementById('tva_'+i)?.value||20;
+    const h=r2(qty*pu); ht+=h; tva+=r2(h*tv/100);
+  }
+  ht=r2(ht);tva=r2(tva);
+  const ph=document.getElementById('prev_ht');const pt=document.getElementById('prev_tva');const pc=document.getElementById('prev_ttc');
+  if(ph)ph.textContent=fmtMAD(ht);if(pt)pt.textContent=fmtMAD(tva);if(pc)pc.textContent=fmtMAD(r2(ht+tva));
+}
+
+async function saveDoc(id, type) {
+  const tiersId=document.getElementById('d_tiers').value;
+  const tiers=tiersId?state.tiers.find(t=>t.id==tiersId):null;
+  const lignes=[];
+  for(let i=0;i<ligneCount+10;i++){
+    const des=document.getElementById('des_'+i)?.value;
+    if(!des)continue;
+    lignes.push({designation:des,quantite:+document.getElementById('qty_'+i)?.value||1,prix_unit_ht:+document.getElementById('pu_'+i)?.value||0,taux_tva:+document.getElementById('tva_'+i)?.value||20,taux_remise:0,unite:'U'});
+  }
+  if(lignes.length===0)return toast('Au moins une ligne requise','error');
+  const d={type,date_doc:document.getElementById('d_date').value,date_echeance:document.getElementById('d_ech').value||null,tiers_id:tiersId||null,tiers_nom:tiers?.raison_sociale||'',tiers_ice:document.getElementById('d_ice').value,tiers_if:'',tiers_adresse:tiers?.adresse||'',tiers_ville:tiers?.ville||'',statut:document.getElementById('d_stat').value,mode_paiement:document.getElementById('d_pay').value,notes:document.getElementById('d_notes').value,lignes};
+  if(!d.date_doc)return toast('Date requise','error');
+  try{if(id)await api('PUT','/api/documents/'+id,d);else await api('POST','/api/documents',d);closeModal();await loadAll();renderPage(currentPage);toast('Document sauvegardé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function validerDoc(id) {
+  try{await api('PUT','/api/documents/'+id,{statut:'valide'});await loadAll();renderPage(currentPage);toast('Validé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── EMPLOYÉS ─────────────────────────────────────────────────
+function renderEmployes(el) {
+  if (!el) el = document.getElementById('page-employes');
+  const emps = state.employes||[];
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">👤 Employés — الموظفون</div>
+      <div class="page-sub">${emps.length} employé(s) · SMIG 2026: ${LEGAL.SMIG||3422} MAD</div></div>
+      <button class="btn btn-blue" onclick="empForm()">+ Ajouter</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Matricule</th><th>Nom</th><th>Poste</th><th>Contrat</th><th>Salaire brut</th><th>CNSS</th><th>Actions</th></tr></thead>
+      <tbody>${emps.map(e=>`<tr>
+        <td style="font-family:monospace;font-size:12px;color:#1a5fb4">${e.matricule}</td>
+        <td><div style="font-weight:700">${e.prenom} ${e.nom}</div><div style="font-size:11px;color:#64748b">${e.departement||''}</div></td>
+        <td style="font-size:12px">${e.poste||'—'}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;background:#1a5fb415;color:#1a5fb4;font-size:11px;font-weight:700">${e.type_contrat}</span></td>
+        <td style="font-weight:700">${fmtMAD(e.salaire_base)}</td>
+        <td style="font-size:11px;color:#64748b">${e.cnss_num||'—'}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="empForm(${e.id})">Modifier</button>
+          <button class="btn btn-success btn-sm" onclick="genBulletin(${e.id})">Bulletin</button>
+          <button class="btn btn-danger btn-sm" onclick="delItem('employes',${e.id},'cet employe')">✕</button>
+        </div></td>
+      </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">Aucun employé</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function empForm(id) {
+  const e=id?state.employes.find(x=>x.id==id):{};
+  const smig=LEGAL.SMIG||3422;
+  openModal(id?'Modifier employé':'Nouvel employé',`
+    <div style="padding:8px;background:#22c55e15;border-radius:8px;margin-bottom:12px;font-size:11px;color:#22c55e">
+      ✓ SMIG 2026: ${smig} MAD/mois · Art.356 Code travail
+    </div>
+    <div class="form-grid">
+      <div class="form-field"><label>Prénom *</label><input id="e_prenom" value="${e.prenom||''}" placeholder="Mohammed"></div>
+      <div class="form-field"><label>Nom *</label><input id="e_nom" value="${e.nom||''}" placeholder="Alami"></div>
+      <div class="form-field"><label>CIN</label><input id="e_cin" value="${e.cin||''}" placeholder="AB123456"></div>
+      <div class="form-field"><label>N° CNSS</label><input id="e_cnss" value="${e.cnss_num||''}" placeholder="1234567890"></div>
+      <div class="form-field"><label>Date embauche *</label><input type="date" id="e_emb" value="${e.date_embauche||new Date().toISOString().split('T')[0]}"></div>
+      <div class="form-field"><label>Contrat</label><select id="e_contrat">${['CDI','CDD','ANAPEC','Stage'].map(c=>`<option ${e.type_contrat===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Poste</label><input id="e_poste" value="${e.poste||''}" placeholder="Comptable"></div>
+      <div class="form-field"><label>Département</label><input id="e_dept" value="${e.departement||''}" placeholder="Finance"></div>
+      <div class="form-field"><label>Salaire base (MAD) * min ${smig}</label><input type="number" id="e_sal" value="${e.salaire_base||smig}" min="${smig}" step="100"></div>
+      <div class="form-field"><label>Nb enfants (max 6)</label><input type="number" id="e_enf" value="${e.nb_enfants||0}" min="0" max="6"></div>
+      <div class="form-field"><label>Conjoint(e) à charge</label><select id="e_conj"><option value="0" ${!e.conjoint?'selected':''}>Non</option><option value="1" ${e.conjoint?'selected':''}>Oui</option></select></div>
+      <div class="form-field"><label>RIB Bancaire</label><input id="e_rib" value="${e.rib||''}" placeholder="007810000..."></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveEmp(${id||0})">${id?'Enregistrer':'Ajouter'}</button>`
+  );
+}
+
+async function saveEmp(id) {
+  const d={prenom:document.getElementById('e_prenom').value,nom:document.getElementById('e_nom').value,cin:document.getElementById('e_cin').value,cnss_num:document.getElementById('e_cnss').value,date_embauche:document.getElementById('e_emb').value,type_contrat:document.getElementById('e_contrat').value,poste:document.getElementById('e_poste').value,departement:document.getElementById('e_dept').value,salaire_base:+document.getElementById('e_sal').value,nb_enfants:+document.getElementById('e_enf').value,conjoint:+document.getElementById('e_conj').value,rib:document.getElementById('e_rib').value};
+  if(!d.prenom||!d.nom||!d.date_embauche)return toast('Prénom, nom et date embauche requis','error');
+  try{if(id)await api('PUT','/api/employes/'+id,d);else await api('POST','/api/employes',d);closeModal();await loadAll();renderPage('employes');toast('Employé sauvegardé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── PAIE ─────────────────────────────────────────────────────
+function renderPaie(el) {
+  if (!el) el = document.getElementById('page-paie');
+  const buls=state.bulletins||[];
+  const ML=['','Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">💼 Paie LF 2026 — كشف الراتب</div>
+      <div class="page-sub">CNSS 4.48% · AMO 2.26% · IR Art.73 CGI · SMIG ${LEGAL.SMIG||3422} MAD</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="simulerPaie()">🧮 Simulateur</button>
+        <button class="btn btn-blue" onclick="genBulletin()">+ Bulletin</button>
+      </div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      ${[['💰','Masse brute',fmtMAD(buls.reduce((a,b)=>a+b.salaire_brut,0)),'#1a5fb4'],['💸','Charges patron',fmtMAD(buls.reduce((a,b)=>a+(b.charge_patronale_total||0),0)),'#ef4444'],['📊','IR retenu',fmtMAD(buls.reduce((a,b)=>a+b.ir_net,0)),'#f59e0b'],['✅','Nets versés',fmtMAD(buls.reduce((a,b)=>a+b.salaire_net,0)),'#22c55e']].map(([i,l,v,c])=>`<div class="stat-card"><div class="stat-icon" style="background:${c}18">${i}</div><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('')}
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Matricule</th><th>Employé</th><th>Période</th><th>Brut</th><th>CNSS+AMO</th><th>IR</th><th>Net</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>${buls.map(b=>`<tr>
+        <td style="font-family:monospace;font-size:11px;color:#1a5fb4">${b.matricule}</td>
+        <td style="font-weight:600">${b.prenom} ${b.nom}</td>
+        <td style="font-size:12px">${ML[b.mois]} ${b.annee}</td>
+        <td style="font-weight:700">${fmtMAD(b.salaire_brut)}</td>
+        <td style="color:#ef4444;font-size:12px">${fmtMAD((b.cnss_salarie||0)+(b.amo_salarie||0))}</td>
+        <td style="color:#f59e0b;font-size:12px">${fmtMAD(b.ir_net)}</td>
+        <td style="font-weight:800;color:#22c55e">${fmtMAD(b.salaire_net)}</td>
+        <td>${badge(b.statut)}</td>
+        <td><div style="display:flex;gap:4px">
+          ${b.statut!=='valide'?`<button class="btn btn-success btn-sm" onclick="validerBulletin(${b.id})">✓</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="delItem('bulletins',${b.id},'ce bulletin')">✕</button>
+        </div></td>
+      </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;color:#64748b;padding:30px">Aucun bulletin</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function genBulletin(empId) {
+  const now=new Date();
+  openModal('Générer bulletin de paie',`
+    <div class="form-grid">
+      <div class="form-field full"><label>Employé *</label><select id="b_emp">
+        <option value="">-- Choisir --</option>
+        ${state.employes.map(e=>`<option value="${e.id}" ${empId==e.id?'selected':''}>${e.prenom} ${e.nom} — ${e.matricule}</option>`).join('')}
+      </select></div>
+      <div class="form-field"><label>Mois</label><select id="b_mois">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${m===now.getMonth()+1?'selected':''}>${['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][m-1]}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Année</label><input type="number" id="b_annee" value="${now.getFullYear()}"></div>
+      <div class="form-field"><label>Salaire base (MAD)</label><input type="number" id="b_sal" value="" placeholder="Auto depuis fiche employé" oninput="previewBulletin()"></div>
+      <div class="form-field"><label>HS +25% (h)</label><input type="number" id="b_hs25" value="0" oninput="previewBulletin()"></div>
+      <div class="form-field"><label>HS +50% (h)</label><input type="number" id="b_hs50" value="0" oninput="previewBulletin()"></div>
+      <div class="form-field"><label>Autres primes (MAD)</label><input type="number" id="b_primes" value="0" oninput="previewBulletin()"></div>
+      <div class="form-field"><label>Ind. transport (MAD)</label><input type="number" id="b_transp" value="0" oninput="previewBulletin()"></div>
+    </div>
+    <div id="bulletinPreview" style="margin-top:12px"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveBulletin()">Créer le bulletin</button>`
+  );
+  document.getElementById('b_emp').addEventListener('change', previewBulletin);
+  setTimeout(previewBulletin,100);
+}
+
+async function previewBulletin() {
+  const empId=document.getElementById('b_emp')?.value;
+  const emp=empId?state.employes.find(e=>e.id==empId):null;
+  const sal=+document.getElementById('b_sal')?.value||(emp?.salaire_base||0);
+  if(!sal)return;
+  try{
+    const calc=await api('POST','/api/paie/simuler',{salaire_base:sal,heures_sup_25:+document.getElementById('b_hs25')?.value||0,heures_sup_50:+document.getElementById('b_hs50')?.value||0,autres_primes:+document.getElementById('b_primes')?.value||0,indemnite_transport:+document.getElementById('b_transp')?.value||0,nb_enfants:emp?.nb_enfants||0,conjoint:emp?.conjoint||0,date_embauche:emp?.date_embauche});
+    const el=document.getElementById('bulletinPreview');if(!el)return;
+    el.innerHTML=`<div style="background:#ffffff06;border-radius:10px;padding:14px;font-size:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+        <div><div style="color:#64748b">Brut</div><div style="font-size:16px;font-weight:800;color:#1a5fb4">${fmtMAD(calc.salaire_brut)}</div></div>
+        <div><div style="color:#64748b">Net à payer</div><div style="font-size:16px;font-weight:800;color:#22c55e">${fmtMAD(calc.salaire_net)}</div></div>
+        <div><div style="color:#64748b">Coût employeur</div><div style="font-size:16px;font-weight:800;color:#ef4444">${fmtMAD(calc.cout_employeur)}</div></div>
+      </div>
+      <div style="margin-top:10px;color:#64748b">CNSS: ${fmtMAD(calc.cnss_salarie)} · AMO: ${fmtMAD(calc.amo_salarie)} · IR: ${fmtMAD(calc.ir_net)} · Anc: ${calc.annees_anciennete}ans (${Math.round(calc.taux_anciennete*100)}%)</div>
+      <div style="font-size:10px;color:#22c55e;margin-top:4px">✓ Conforme LF 2026 · CNSS 4.48% · AMO 2.26% · IR Art.73 CGI</div>
+    </div>`;
+  }catch(e){}
+}
+
+async function saveBulletin() {
+  const empId=document.getElementById('b_emp').value;
+  if(!empId)return toast('Employé requis','error');
+  const d={employe_id:+empId,mois:+document.getElementById('b_mois').value,annee:+document.getElementById('b_annee').value,salaire_base:+document.getElementById('b_sal').value||null,heures_sup_25:+document.getElementById('b_hs25').value,heures_sup_50:+document.getElementById('b_hs50').value,autres_primes:+document.getElementById('b_primes').value,indemnite_transport:+document.getElementById('b_transp').value};
+  try{await api('POST','/api/bulletins',d);closeModal();await loadAll();renderPage('paie');toast('Bulletin créé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function validerBulletin(id) {
+  try{await api('PUT','/api/bulletins/'+id+'/valider',{});await loadAll();renderPage('paie');toast('Bulletin validé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function simulerPaie() {
+  openModal('🧮 Simulateur paie LF 2026',`
+    <div class="form-grid">
+      <div class="form-field"><label>Salaire brut (MAD)</label><input type="number" id="sim_sal" value="5000" oninput="runSim()"></div>
+      <div class="form-field"><label>Enfants à charge</label><input type="number" id="sim_enf" value="0" min="0" max="6" oninput="runSim()"></div>
+      <div class="form-field"><label>Conjoint(e)</label><select id="sim_conj" onchange="runSim()"><option value="0">Non</option><option value="1">Oui</option></select></div>
+      <div class="form-field"><label>Ancienneté (date emb.)</label><input type="date" id="sim_emb" value="${new Date(Date.now()-3*365*86400000).toISOString().split('T')[0]}" oninput="runSim()"></div>
+    </div>
+    <div id="simRes"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>`
+  );
+  setTimeout(runSim,100);
+}
+
+async function runSim() {
+  try{
+    const calc=await api('POST','/api/paie/simuler',{salaire_base:+document.getElementById('sim_sal')?.value||0,nb_enfants:+document.getElementById('sim_enf')?.value||0,conjoint:+document.getElementById('sim_conj')?.value||0,date_embauche:document.getElementById('sim_emb')?.value});
+    const el=document.getElementById('simRes');if(!el)return;
+    el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px">
+      <div style="padding:12px;background:#1a5fb415;border-radius:10px;text-align:center"><div style="font-size:10px;color:#64748b">Brut</div><div style="font-size:18px;font-weight:800;color:#1a5fb4">${fmtMAD(calc.salaire_brut)}</div></div>
+      <div style="padding:12px;background:#22c55e15;border-radius:10px;text-align:center"><div style="font-size:10px;color:#64748b">NET</div><div style="font-size:18px;font-weight:800;color:#22c55e">${fmtMAD(calc.salaire_net)}</div></div>
+      <div style="padding:12px;background:#ef444415;border-radius:10px;text-align:center"><div style="font-size:10px;color:#64748b">Coût employeur</div><div style="font-size:18px;font-weight:800;color:#ef4444">${fmtMAD(calc.cout_employeur)}</div></div>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#64748b;padding:10px;background:#ffffff06;border-radius:8px">
+      CNSS ${fmtMAD(calc.cnss_salarie)} · AMO ${fmtMAD(calc.amo_salarie)} · IPE ${fmtMAD(calc.ipe_salarie)} · IR ${fmtMAD(calc.ir_net)} · Ancienneté ${calc.annees_anciennete}ans (${Math.round(calc.taux_anciennete*100)}%)
+    </div>`;
+  }catch(e){}
+}
+
+// ─── CONGÉS ───────────────────────────────────────────────────
+function renderConges(el) {
+  if (!el) el = document.getElementById('page-conges');
+  const conges=state.conges||[];
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">🏖 Congés — الإجازات</div>
+      <div class="page-sub">Art.231 Code travail · 18j minimum/an</div></div>
+      <button class="btn btn-blue" onclick="congeForm()">+ Demande</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Employé</th><th>Type</th><th>Début</th><th>Fin</th><th>Jours</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>${conges.map(c=>`<tr>
+        <td style="font-weight:600">${c.prenom} ${c.nom}<div style="font-size:11px;color:#64748b">${c.matricule}</div></td>
+        <td><span style="padding:2px 8px;border-radius:20px;background:#1a5fb415;color:#1a5fb4;font-size:11px">${c.type}</span></td>
+        <td style="font-size:12px">${fmtDate(c.date_debut)}</td>
+        <td style="font-size:12px">${fmtDate(c.date_fin)}</td>
+        <td style="font-weight:700;color:#1a5fb4">${c.nb_jours}j</td>
+        <td>${badge(c.statut)}</td>
+        <td><div style="display:flex;gap:4px">
+          ${c.statut==='en_attente'?`<button class="btn btn-success btn-sm" onclick="updateConge(${c.id},'approuve')">✓</button><button class="btn btn-danger btn-sm" onclick="updateConge(${c.id},'refuse')">✕</button>`:''}
+        </div></td>
+      </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">Aucun congé</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function congeForm() {
+  openModal('Demande de congé',`
+    <div class="form-grid">
+      <div class="form-field full"><label>Employé *</label><select id="c_emp"><option value="">--</option>${state.employes.map(e=>`<option value="${e.id}">${e.prenom} ${e.nom}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Type</label><select id="c_type"><option value="annuel">Annuel (18j min)</option><option value="maladie">Maladie</option><option value="mariage">Mariage (4j)</option><option value="deces">Décès (3j)</option><option value="maternite">Maternité (98j)</option></select></div>
+      <div class="form-field"><label>Nb jours</label><input type="number" id="c_jours" value="5" min="1"></div>
+      <div class="form-field"><label>Date début</label><input type="date" id="c_deb" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="form-field"><label>Date fin</label><input type="date" id="c_fin"></div>
+      <div class="form-field full"><label>Motif</label><textarea id="c_motif" rows="2"></textarea></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveConge()">Soumettre</button>`
+  );
+}
+
+async function saveConge() {
+  const d={employe_id:document.getElementById('c_emp').value,type:document.getElementById('c_type').value,date_debut:document.getElementById('c_deb').value,date_fin:document.getElementById('c_fin').value||document.getElementById('c_deb').value,nb_jours:+document.getElementById('c_jours').value,motif:document.getElementById('c_motif').value};
+  if(!d.employe_id||!d.date_debut)return toast('Employé et date requis','error');
+  try{await api('POST','/api/conges',d);closeModal();await loadAll();renderPage('conges');toast('Demande soumise ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function updateConge(id,statut){
+  try{await api('PUT','/api/conges/'+id,{statut});await loadAll();renderPage('conges');toast('Congé '+statut,'success');}
+  catch(e){}
+}
+
+// ─── TRÉSORERIE ───────────────────────────────────────────────
+function renderTresorerie(el) {
+  if (!el) el = document.getElementById('page-tresorerie');
+  const ops=state.tresorerie||[];
+  const enc=ops.filter(o=>o.type==='encaissement').reduce((a,o)=>a+o.montant,0);
+  const dec=ops.filter(o=>o.type==='decaissement').reduce((a,o)=>a+o.montant,0);
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">🏦 Trésorerie — الخزينة</div>
+      <div class="page-sub">Solde: ${fmtMAD(enc-dec)} · Enc: ${fmtMAD(enc)} · Déc: ${fmtMAD(dec)}</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success" onclick="tresoForm('encaissement')">+ Encaissement</button>
+        <button class="btn btn-danger" onclick="tresoForm('decaissement')">- Décaissement</button>
+      </div>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Compte</th><th>Libellé</th><th>Type</th><th>Montant</th><th>Réf.</th></tr></thead>
+      <tbody>${ops.map(o=>`<tr>
+        <td style="font-size:12px">${fmtDate(o.date_op)}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;background:#1a5fb415;color:#1a5fb4;font-size:11px">${o.compte}</span></td>
+        <td>${o.libelle}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${o.type==='encaissement'?'#22c55e15':'#ef444415'};color:${o.type==='encaissement'?'#22c55e':'#ef4444'}">${o.type==='encaissement'?'📥':'📤'} ${o.type}</span></td>
+        <td style="font-weight:800;color:${o.type==='encaissement'?'#22c55e':'#ef4444'}">${o.type==='encaissement'?'+':'-'}${fmtMAD(o.montant)}</td>
+        <td style="font-size:11px;color:#64748b">${o.reference||'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucune opération</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function tresoForm(type) {
+  openModal(type==='encaissement'?'Encaissement 📥':'Décaissement 📤',`
+    <div class="form-grid">
+      <div class="form-field"><label>Compte</label><select id="tr_cpt">${['Caisse','Banque CIH','Banque Attijariwafa','Banque BMCE','Banque BCP'].map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Date</label><input type="date" id="tr_date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="form-field full"><label>Libellé *</label><input id="tr_lib" placeholder="Description..."></div>
+      <div class="form-field"><label>Montant (MAD) *</label><input type="number" id="tr_mt" step="0.01"></div>
+      <div class="form-field"><label>Référence</label><input id="tr_ref" placeholder="N° chèque, virement..."></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveTreso('${type}')">Enregistrer</button>`
+  );
+}
+
+async function saveTreso(type) {
+  const d={type,compte:document.getElementById('tr_cpt').value,date_op:document.getElementById('tr_date').value,libelle:document.getElementById('tr_lib').value,montant:+document.getElementById('tr_mt').value,reference:document.getElementById('tr_ref').value};
+  if(!d.libelle||!d.montant)return toast('Libellé et montant requis','error');
+  try{await api('POST','/api/tresorerie',d);closeModal();await loadAll();renderPage('tresorerie');toast('Opération enregistrée ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── RAPPORTS ─────────────────────────────────────────────────
+function renderRapports(el) {
+  if (!el) el = document.getElementById('page-rapports');
+  const facts=state.documents.filter(d=>d.type==='facture'&&d.statut==='valide');
+  const buls=state.bulletins||[];
+  const ca=facts.reduce((a,f)=>a+f.total_ttc,0);
+  const tva=facts.reduce((a,f)=>a+f.total_tva,0);
+  const masse=buls.reduce((a,b)=>a+b.salaire_brut,0);
+  const charges=buls.reduce((a,b)=>a+(b.charge_patronale_total||0),0);
+  el.innerHTML = `
+    <div class="page-header"><div><div class="page-title">📈 Rapports — التقارير</div><div class="page-sub">Conformité fiscale 2026 · CGI · CNSS · DGI</div></div></div>
+    <div class="stats-grid">
+      ${[['💰','CA TTC',fmtMAD(ca),'#1a5fb4'],['🧾','TVA collectée',fmtMAD(tva),'#f59e0b'],['💼','Masse salariale',fmtMAD(masse),'#f97316'],['🏛','Charges patronales',fmtMAD(charges),'#ef4444'],['💸','Coût employeur',fmtMAD(masse+charges),'#dc2626'],['📊','IR retenu',fmtMAD(buls.reduce((a,b)=>a+b.ir_net,0)),'#f59e0b'],['👥','Nb clients',state.tiers.filter(t=>t.type==='client'||t.type==='les_deux').length,'#22c55e'],['📦','Articles',state.articles.length,'#1a5fb4']].map(([i,l,v,c])=>`<div class="stat-card"><div class="stat-icon" style="background:${c}18">${i}</div><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">⚖️ Obligations déclaratives 2026</div>
+      ${[['TVA mensuelle','SIMPL-TVA · tax.gov.ma','Le 20 du mois suivant','#f59e0b'],['CNSS mensuel','Damancom · cnss.ma','Le 10 du mois suivant','#22c55e'],['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#1a5fb4'],['IS trimestriel','Acompte 25%','31/03 · 30/06 · 30/09 · 31/12','#f97316'],['Décl. annuelle IR','Modèle 9421 DGI','Avant le 28 février','#7c3aed']].map(([t,p,d,c])=>`<div style="padding:10px;background:#ffffff04;border-radius:8px;margin-bottom:8px;border-left:3px solid ${c};display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:13px;font-weight:700;color:${c}">${t}</div><div style="font-size:11px;color:#64748b">${p}</div></div>
+        <div style="font-size:11px;color:#64748b">${d}</div>
+      </div>`).join('')}
+    </div>`;
+}
+
+// ─── PARAMÈTRES ───────────────────────────────────────────────
+function renderParametres(el) {
+  if (!el) el = document.getElementById('page-parametres');
+  const acc=currentAccount;
+  el.innerHTML = `
+    <div class="page-header"><div><div class="page-title">⚙ Paramètres — الإعدادات</div><div class="page-sub">Mentions légales obligatoires sur factures CGI Art.145</div></div></div>
+    <div class="card" style="max-width:700px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">Votre entreprise — معلومات الشركة</div>
+      <div class="form-grid">
+        <div class="form-field full"><label>Raison sociale *</label><input id="cfg_name" value="${acc.company_name||''}"></div>
+        <div class="form-field"><label>ICE (15 chiffres) *</label><input id="cfg_ice" value="${acc.company_ice||''}" maxlength="15"></div>
+        <div class="form-field"><label>IF Fiscal *</label><input id="cfg_if" value="${acc.company_if||''}"></div>
+        <div class="form-field"><label>RC *</label><input id="cfg_rc" value="${acc.company_rc||''}"></div>
+        <div class="form-field"><label>Patente</label><input id="cfg_pat" value="${acc.company_patente||''}"></div>
+        <div class="form-field"><label>Téléphone</label><input id="cfg_tel" value="${acc.company_phone||''}"></div>
+        <div class="form-field full"><label>Adresse</label><input id="cfg_adr" value="${acc.company_address||''}"></div>
+        <div class="form-field"><label>Ville</label><input id="cfg_ville" value="${acc.company_city||''}"></div>
+        <div class="form-field"><label>Email</label><input type="email" id="cfg_email" value="${acc.company_email||''}"></div>
+      </div>
+      <button class="btn btn-blue" onclick="saveProfile()" style="margin-top:14px">💾 Enregistrer</button>
+    </div>`;
+}
+
+async function saveProfile() {
+  const d={company_name:document.getElementById('cfg_name').value,company_ice:document.getElementById('cfg_ice').value,company_if:document.getElementById('cfg_if').value,company_rc:document.getElementById('cfg_rc').value,company_patente:document.getElementById('cfg_pat').value,company_phone:document.getElementById('cfg_tel').value,company_address:document.getElementById('cfg_adr').value,company_city:document.getElementById('cfg_ville').value,company_email:document.getElementById('cfg_email').value};
+  try{await api('PUT','/api/auth/profile',d);currentAccount={...currentAccount,...d};toast('Profil sauvegardé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+// ─── SUPER ADMIN ──────────────────────────────────────────────
+async function renderSuperAdmin(el) {
+  if (!el) el = document.getElementById('page-superadmin');
+  if (currentAccount.role!=='super'){el.innerHTML='<div class="card" style="text-align:center;color:#ef4444;padding:40px">Accès refusé</div>';return;}
+  let accounts=[],trials=[];
+  try{[accounts,trials]=await Promise.all([api('GET','/api/admin/accounts'),api('GET','/api/admin/trials')]);}catch(e){}
+  const pending=trials.filter(t=>t.status==='en_attente');
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">👑 Super Admin</div><div class="page-sub">${accounts.filter(a=>a.role!=='super').length} comptes · ${pending.length} demande(s)</div></div>
+      <button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button>
+    </div>
+    ${pending.length>0?`<div class="card" style="border:1px solid #1a5fb440;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700;color:#1a5fb4;margin-bottom:10px">📋 Demandes d'essai (${pending.length})</div>
+      ${pending.map(r=>`<div style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#1a5fb4">${r.societe}</span></div>
+        <div style="font-size:12px;color:#64748b">${r.email} · ${r.phone}</div></div>
+        <button class="btn btn-success btn-sm" onclick="approveTrialForm(${r.id},'${r.prenom} ${r.nom}','${r.email}')">✓ Approuver</button>
+      </div>`).join('')}
+    </div>`:''}
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Nom</th><th>Email</th><th>Plan</th><th>Expiration</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>${accounts.filter(a=>a.role!=='super').map(a=>{
+        const days=a.plan==='enterprise'?'∞':Math.max(0,Math.ceil((new Date(a.expires_at)-new Date())/86400000))+'j';
+        return `<tr>
+          <td style="font-weight:700">${a.name}<div style="font-size:11px;color:#64748b">${a.company_name||'—'}</div></td>
+          <td style="font-size:12px;color:#64748b">${a.email}</td>
+          <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#1a5fb415;color:#1a5fb4">${a.plan}</span></td>
+          <td style="font-size:12px;color:#64748b">${a.expires_at?.slice(0,10)||'—'} (${days})</td>
+          <td>${badge(a.status==='active'?'actif':'archive')}</td>
+          <td><div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm" onclick="editAccount(${a.id})">Modifier</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id})">Suppr.</button>
+          </div></td>
+        </tr>`;
+      }).join('')||'<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucun compte</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+}
+
+function createAccount() {
+  openModal('Créer un compte',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nom *</label><input id="ac_name"></div>
+      <div class="form-field"><label>Email *</label><input type="email" id="ac_email"></div>
+      <div class="form-field"><label>Mot de passe *</label><input type="password" id="ac_pass"></div>
+      <div class="form-field"><label>Société</label><input id="ac_soc"></div>
+      <div class="form-field full"><label>Plan</label><select id="ac_plan">
+        <option value="trial">Essai 48h</option><option value="starter">Starter 30j — 399 MAD</option>
+        <option value="pro">Pro 1an — 799 MAD</option><option value="enterprise">Enterprise</option>
+      </select></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveNewAccount()">Créer</button>`
+  );
+}
+
+async function saveNewAccount() {
+  const d={name:document.getElementById('ac_name').value,email:document.getElementById('ac_email').value,password:document.getElementById('ac_pass').value,company_name:document.getElementById('ac_soc').value,plan:document.getElementById('ac_plan').value};
+  if(!d.name||!d.email||!d.password)return toast('Nom, email et MDP requis','error');
+  try{await api('POST','/api/admin/accounts',d);closeModal();renderPage('superadmin');toast('Compte créé ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function editAccount(id) {
+  const accounts=await api('GET','/api/admin/accounts');
+  const a=accounts.find(x=>x.id==id);if(!a)return;
+  openModal('Modifier compte',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nom</label><input id="ea_name" value="${a.name}"></div>
+      <div class="form-field"><label>Nouveau MDP</label><input type="password" id="ea_pass" placeholder="Laisser vide = inchangé"></div>
+      <div class="form-field"><label>Plan</label><select id="ea_plan">
+        <option value="trial" ${a.plan==='trial'?'selected':''}>Essai</option>
+        <option value="starter" ${a.plan==='starter'?'selected':''}>Starter</option>
+        <option value="pro" ${a.plan==='pro'?'selected':''}>Pro</option>
+        <option value="enterprise" ${a.plan==='enterprise'?'selected':''}>Enterprise</option>
+      </select></div>
+      <div class="form-field"><label>Statut</label><select id="ea_status">
+        <option value="active" ${a.status==='active'?'selected':''}>Actif</option>
+        <option value="suspended" ${a.status==='suspended'?'selected':''}>Suspendu</option>
+      </select></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-blue" onclick="saveEditAccount(${id})">Enregistrer</button>`
+  );
+}
+
+async function saveEditAccount(id) {
+  const d={name:document.getElementById('ea_name').value,plan:document.getElementById('ea_plan').value,status:document.getElementById('ea_status').value};
+  const pass=document.getElementById('ea_pass').value;if(pass)d.newPassword=pass;
+  try{await api('PUT','/api/admin/accounts/'+id,d);closeModal();renderPage('superadmin');toast('Compte mis à jour ✓','success');}
+  catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function deleteAccount(id) {
+  confirm2('Supprimer','Supprimer ce compte définitivement ?',async()=>{
+    try{await api('DELETE','/api/admin/accounts/'+id);renderPage('superadmin');toast('Compte supprimé ✓','success');}
+    catch(e){}
+  });
+}
+
+function approveTrialForm(id,name,email) {
+  openModal('Approuver — '+name,`
+    <div style="padding:10px;background:#22c55e15;border-radius:8px;margin-bottom:12px;font-size:13px;color:#22c55e">✓ Créer compte pour: ${name} · ${email}</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Plan</label><select id="ap_plan"><option value="trial">Essai 48h</option><option value="starter" selected>Starter 30j</option><option value="pro">Pro 1an</option><option value="enterprise">Enterprise</option></select></div>
+      <div class="form-field"><label>Mot de passe *</label><input id="ap_pass" value="PMEGest2026!"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+     <button class="btn btn-success" onclick="approveTrial(${id})">✓ Créer</button>`
+  );
+}
+
+async function approveTrial(id) {
+  const plan=document.getElementById('ap_plan').value,password=document.getElementById('ap_pass').value;
+  if(!password)return toast('MDP requis','error');
+  try{
+    const trials=await api('GET','/api/admin/trials');const t=trials.find(x=>x.id==id);if(!t)return;
+    await api('POST','/api/admin/accounts',{name:t.prenom+' '+t.nom,email:t.email,password,company_name:t.societe,plan});
+    closeModal();renderPage('superadmin');toast('Compte créé ✓ — '+t.email+' / '+password,'success');
+  }catch(e){toast(e.error||'Erreur','error');}
+}
+
+
 </script>
 </body>
 </html>
