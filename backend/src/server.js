@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'MAROCBIZ_ERP_2026_SECRET';
+const JWT_SECRET = process.env.JWT_SECRET || 'PMEGEST_ERP_2026_SECRET';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, '../../frontend/public')));
 
-const db = new Database(path.join(DATA_DIR, 'marocbiz.db'));
+const db = new Database(path.join(DATA_DIR, 'pmegest.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -149,9 +149,9 @@ db.exec(`
 
 // SUPER ADMIN
 if (!db.prepare("SELECT id FROM accounts WHERE role='super'").get()) {
-  db.prepare("INSERT INTO accounts (name,email,password,role,company_name,plan,expires_at) VALUES (?,?,?,'super','MarocBiz ERP','enterprise','2099-12-31')")
-    .run('Super Admin','admin@marocbiz.ma',bcrypt.hashSync('MarocBiz2026@Admin',10));
-  console.log('Super Admin: admin@marocbiz.ma / MarocBiz2026@Admin');
+  db.prepare("INSERT INTO accounts (name,email,password,role,company_name,plan,expires_at) VALUES (?,?,?,'super','PMEGest.ma','enterprise','2099-12-31')")
+    .run('Super Admin','admin@pmegest.ma',bcrypt.hashSync('PMEGest2026@Admin',10));
+  console.log('Super Admin: admin@pmegest.ma / PMEGest2026@Admin');
 }
 
 // LOIS MAROC 2026
@@ -528,6 +528,6 @@ app.get('/api/legal',(req,res)=>res.json(L));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../../frontend/public/index.html')));
 
 app.listen(PORT,'0.0.0.0',()=>{
-  console.log(`MarocBiz ERP port ${PORT}`);
+  console.log(`PMEGest.ma port ${PORT}`);
   console.log(`SMIG 2026: ${L.SMIG} MAD | CNSS: ${L.CNSS_SAL*100}% | AMO: ${L.AMO_SAL*100}%`);
 });

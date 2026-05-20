@@ -4,65 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#050a14">
-<title>MarocBiz ERP — نظام إدارة الأعمال المغربي 2026</title>
+<meta name="theme-color" content="#0D0910">
+<title>PMEGest.ma — Gestion PME Maroc | ERP · Paie · Facturation</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#050a14;color:#f1f5f9;font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
+body{background:#0D0910;color:#f1f5f9;font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
 input,select,textarea{font-size:16px!important;font-family:inherit}
 button{touch-action:manipulation;font-family:inherit}
 .hidden{display:none!important}
-#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 60% 30%,#0f2a4a,#050a14)}
-.login-box{background:#0a1628;border:1px solid #1e3a5f;border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
-.ll-icon{width:72px;height:72px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 60% 30%,#0f2a4a,#0D0910)}
+.login-box{background:#1A1024;border:1px solid #2D1B33;border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.ll-icon{width:72px;height:72px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
 .ll h1{font-size:24px;font-weight:900;text-align:center}
-.ll .sub{font-size:11px;color:#2563eb;font-weight:700;letter-spacing:2px;text-align:center;margin-top:4px}
+.ll .sub{font-size:11px;color:#714B67;font-weight:700;letter-spacing:2px;text-align:center;margin-top:4px}
 .ll .ar{font-size:13px;color:#64748b;text-align:center;direction:rtl;margin-top:4px}
 .ll .legal{font-size:10px;color:#22c55e;text-align:center;margin-top:6px;padding:3px 10px;background:#22c55e15;border-radius:20px;display:inline-block;width:100%}
 .fg{margin-bottom:16px}
 .fg label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
-.fg input,.fg select{width:100%;padding:12px 14px;background:#06111e;border:1px solid #1e3a5f;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s}
-.fg input:focus,.fg select:focus{border-color:#2563eb}
-.btn-login{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
-.btn-trial{width:100%;padding:12px;border-radius:12px;border:1px solid #2563eb40;background:#2563eb10;color:#2563eb;font-weight:700;font-size:14px;cursor:pointer}
+.fg input,.fg select{width:100%;padding:12px 14px;background:#0F0A14;border:1px solid #2D1B33;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:#714B67}
+.btn-login{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#714B67,#5C3D57);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
+.btn-trial{width:100%;padding:12px;border-radius:12px;border:1px solid #714B6740;background:#714B6710;color:#714B67;font-weight:700;font-size:14px;cursor:pointer}
 .err{color:#ef4444;font-size:13px;margin-top:10px;text-align:center;display:none}
 .divider{display:flex;align-items:center;gap:10px;margin:16px 0}
-.divider::before,.divider::after{content:"";flex:1;height:1px;background:#1e3a5f}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:#2D1B33}
 .divider span{font-size:11px;color:#334155}
 #appPage{display:none}
 .app-layout{display:flex;min-height:100vh}
-.sidebar{width:250px;background:#070e1c;border-right:1px solid #1e3a5f;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
-.sb-header{padding:16px;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;gap:10px}
-.sb-icon{width:40px;height:40px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sidebar{width:250px;background:#120D17;border-right:1px solid #2D1B33;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-header{padding:16px;border-bottom:1px solid #2D1B33;display:flex;align-items:center;gap:10px}
+.sb-icon{width:40px;height:40px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .sb-title{font-size:13px;font-weight:800;color:#f1f5f9}
-.sb-sub{font-size:9px;color:#2563eb;font-weight:700;letter-spacing:1px;margin-top:2px}
+.sb-sub{font-size:9px;color:#714B67;font-weight:700;letter-spacing:1px;margin-top:2px}
 .sb-sub-ar{font-size:9px;color:#334155;direction:rtl;margin-top:1px}
 .sb-nav{flex:1;padding:8px 6px;overflow-y:auto}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;border:none;background:transparent;width:100%;text-align:left;border-left:3px solid transparent;transition:all .15s;margin-bottom:1px}
 .nav-item:hover{background:#ffffff08;color:#f1f5f9}
-.nav-item.active{background:#2563eb15;color:#2563eb;font-weight:700;border-left-color:#2563eb}
+.nav-item.active{background:#714B6715;color:#714B67;font-weight:700;border-left-color:#714B67}
 .nav-item .ni{font-size:16px;flex-shrink:0;width:22px;text-align:center}
 .nav-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:auto}
-.nav-section{font-size:9px;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:1px;padding:10px 12px 4px}
-.sb-footer{padding:12px;border-top:1px solid #1e3a5f}
+.nav-section{font-size:9px;font-weight:700;color:#2D1B33;text-transform:uppercase;letter-spacing:1px;padding:10px 12px 4px}
+.sb-footer{padding:12px;border-top:1px solid #2D1B33}
 .user-row{display:flex;align-items:center;gap:10px}
-.user-av{width:34px;height:34px;background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.user-av{width:34px;height:34px;background:linear-gradient(135deg,#714B67,#5C3D57);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
 .user-name{font-size:12px;font-weight:700}
 .user-role{font-size:10px;color:#64748b}
 .lic-badge{margin-top:8px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;text-align:center}
 .main{margin-left:250px;flex:1;min-height:100vh}
-.topbar{height:52px;background:#070e1c;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.topbar{height:52px;background:#120D17;border-bottom:1px solid #2D1B33;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
 .tb-title{font-size:12px;font-weight:700;color:#334155}
-.tb-ar{font-size:10px;color:#1e3a5f;direction:rtl}
+.tb-ar{font-size:10px;color:#2D1B33;direction:rtl}
 .tb-right{display:flex;gap:8px;align-items:center}
-.btn-logout{padding:5px 12px;border-radius:8px;border:1px solid #1e3a5f;background:transparent;color:#64748b;cursor:pointer;font-size:11px}
+.btn-logout{padding:5px 12px;border-radius:8px;border:1px solid #2D1B33;background:transparent;color:#64748b;cursor:pointer;font-size:11px}
 .btn-super{padding:5px 12px;border-radius:8px;border:1px solid #f59e0b40;background:#f59e0b18;color:#f59e0b;font-weight:700;cursor:pointer;font-size:11px}
 .exp-badge{padding:4px 10px;border-radius:6px;background:#ef444418;border:1px solid #ef444430;font-size:11px;font-weight:700;color:#ef4444}
 .page{padding:28px;display:none}
 .page.active{display:block}
-.card{background:#0a1628;border:1px solid #1e3a5f;border-radius:16px;padding:20px}
+.card{background:#1A1024;border:1px solid #2D1B33;border-radius:16px;padding:20px}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.stat-card{background:#0a1628;border:1px solid #1e3a5f;border-radius:14px;padding:18px}
+.stat-card{background:#1A1024;border:1px solid #2D1B33;border-radius:14px;padding:18px}
 .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px}
 .stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
 .stat-lbl{font-size:11px;color:#64748b;margin-top:2px}
@@ -70,44 +70,44 @@ button{touch-action:manipulation;font-family:inherit}
 .page-title{font-size:22px;font-weight:800}
 .page-sub{font-size:12px;color:#64748b;margin-top:3px}
 .btn{padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;transition:all .15s;font-family:inherit}
-.btn-blue{background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff}
-.btn-ghost{background:transparent;border:1px solid #1e3a5f;color:#64748b}
-.btn-ghost:hover{border-color:#2563eb;color:#2563eb}
+.btn-blue{background:linear-gradient(135deg,#714B67,#5C3D57);color:#fff}
+.btn-ghost{background:transparent;border:1px solid #2D1B33;color:#64748b}
+.btn-ghost:hover{border-color:#714B67;color:#714B67}
 .btn-danger{background:#ef444418;border:1px solid #ef444430;color:#ef4444}
 .btn-success{background:#22c55e18;border:1px solid #22c55e30;color:#22c55e}
 .btn-warning{background:#f59e0b18;border:1px solid #f59e0b30;color:#f59e0b}
 .btn-sm{padding:5px 12px;font-size:11px;border-radius:7px}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;min-width:600px}
-th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #1e3a5f}
-td{padding:11px 12px;font-size:13px;border-bottom:1px solid #06111e}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #2D1B33}
+td{padding:11px 12px;font-size:13px;border-bottom:1px solid #0F0A14}
 tr:hover td{background:#ffffff04}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .badge-dot{width:5px;height:5px;border-radius:50%}
 .modal-overlay{position:fixed;inset:0;background:#00000090;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
-.modal{background:#0a1628;border:1px solid #1e3a5f;border-radius:20px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
-.modal-hdr{padding:20px 24px;border-bottom:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#0a1628;z-index:1}
+.modal{background:#1A1024;border:1px solid #2D1B33;border-radius:20px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-hdr{padding:20px 24px;border-bottom:1px solid #2D1B33;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#1A1024;z-index:1}
 .modal-hdr h3{font-size:16px;font-weight:800}
 .modal-body{padding:24px}
 .modal-foot{padding:0 24px 24px;display:flex;gap:10px;justify-content:flex-end}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-field label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
-.form-field input,.form-field select,.form-field textarea{width:100%;padding:10px 14px;background:#06111e;border:1px solid #1e3a5f;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s;font-family:inherit}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#2563eb}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:10px 14px;background:#0F0A14;border:1px solid #2D1B33;border-radius:10px;color:#f1f5f9;outline:none;transition:border-color .2s;font-family:inherit}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#714B67}
 .form-field textarea{resize:none;min-height:80px}
 .full{grid-column:1/-1}
 #confirmModal .modal{max-width:420px}
 #toastCont{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 18px;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;min-width:260px;animation:slideIn .3s ease;box-shadow:0 8px 24px #00000060}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#1d4ed8}.t-warning{background:#d97706}
+.t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#5C3D57}.t-warning{background:#d97706}
 .bulletin-section{background:#ffffff06;border-radius:12px;padding:16px;margin-bottom:12px}
 .bulletin-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff06;font-size:13px}
-.bulletin-total{background:#2563eb15;border:1px solid #2563eb30;border-radius:10px;padding:14px;text-align:right}
+.bulletin-total{background:#714B6715;border:1px solid #714B6730;border-radius:10px;padding:14px;text-align:right}
 .legal-note{font-size:10px;color:#22c55e;margin-top:4px}
 @media(max-width:768px){.sidebar{width:56px}.sb-title,.sb-sub,.sb-sub-ar,.nav-item span:not(.ni),.user-name,.user-role,.lic-badge,.nav-section,.nav-badge{display:none}.main{margin-left:56px}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.page{padding:14px}}
-@media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #1e3a5f;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0;scrollbar-width:none}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#2563eb;background:#2563eb10}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.stats-grid{gap:8px}.page-header{flex-direction:column;align-items:flex-start}}
+@media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #2D1B33;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0;scrollbar-width:none}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#714B67;background:#714B6710}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.stats-grid{gap:8px}.page-header{flex-direction:column;align-items:flex-start}}
 @supports(padding-bottom:env(safe-area-inset-bottom)){@media(max-width:480px){.sidebar{padding-bottom:env(safe-area-inset-bottom)}.main{margin-bottom:calc(56px + env(safe-area-inset-bottom))}}}
 </style>
 </head>
@@ -117,9 +117,9 @@ tr:hover td{background:#ffffff04}
   <div class="login-box">
     <div class="ll">
       <div class="ll-icon">🏢</div>
-      <h1>MarocBiz ERP</h1>
-      <div class="sub">SOLUTION ERP MAROCAINE 2026</div>
-      <div class="ar">نظام إدارة الأعمال المغربي</div>
+      <h1>PMEGest.ma</h1>
+      <div class="sub">SOLUTION GESTION PME MAROC 2026</div>
+      <div class="ar">نظام إدارة المقاولات</div>
       <div class="legal">✓ CGI Art.145 · LF 2026 · Code travail 65-99</div>
     </div>
     <div class="fg" style="margin-top:20px"><label>Email</label><input type="email" id="loginEmail" placeholder="votre@entreprise.ma" autocomplete="email"></div>
@@ -136,7 +136,7 @@ tr:hover td{background:#ffffff04}
     <div class="sidebar">
       <div class="sb-header">
         <div class="sb-icon">🏢</div>
-        <div><div class="sb-title">MarocBiz ERP</div><div class="sb-sub">ERP MAROCAIN 2026</div><div class="sb-sub-ar">نظام إدارة الأعمال</div></div>
+        <div><div class="sb-title">PMEGest.ma</div><div class="sb-sub">PME · GESTION · MAROC</div><div class="sb-sub-ar">إدارة المقاولات</div></div>
       </div>
       <nav class="sb-nav" id="sidebarNav"></nav>
       <div class="sb-footer">
@@ -149,7 +149,7 @@ tr:hover td{background:#ffffff04}
     </div>
     <div class="main">
       <div class="topbar">
-        <div><div class="tb-title">MarocBiz ERP — نظام إدارة الأعمال</div><div class="tb-ar">Conforme CGI · LF 2026 · Code travail</div></div>
+        <div><div class="tb-title">PMEGest.ma — إدارة المقاولات</div><div class="tb-ar">Conforme CGI · LF 2026 · Code travail</div></div>
         <div class="tb-right">
           <div id="expBadge" class="exp-badge hidden"></div>
           <button id="btnSuper" class="btn-super hidden" onclick="showPage('superadmin')">👑 Super Admin</button>
@@ -228,13 +228,13 @@ tr:hover td{background:#ffffff04}
         const ps = prospects.filter(p=>p.statut===st);
         const val = ps.reduce((a,p)=>a+p.valeur_estimee,0);
         const s = STATUS[st]||{c:'#64748b',l:st};
-        return `<div style="min-width:200px;flex:1;background:#0a1628;border:1px solid #1e3a5f;border-top:3px solid ${s.c};border-radius:12px;padding:14px">
+        return `<div style="min-width:200px;flex:1;background:#1A1024;border:1px solid #2D1B33;border-top:3px solid ${s.c};border-radius:12px;padding:14px">
           <div style="font-size:12px;font-weight:700;color:${s.c};margin-bottom:8px">${s.l} (${ps.length})</div>
           <div style="font-size:11px;color:#64748b;margin-bottom:10px">${fmtMAD(val)}</div>
-          ${ps.map(p=>`<div onclick="crmForm(${p.id})" style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid #1e3a5f">
+          ${ps.map(p=>`<div onclick="crmForm(${p.id})" style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid #2D1B33">
             <div style="font-size:13px;font-weight:700">${p.nom}</div>
             <div style="font-size:11px;color:#64748b">${p.societe||''}</div>
-            <div style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px">${fmtMAD(p.valeur_estimee)} · ${p.probabilite}%</div>
+            <div style="font-size:12px;color:#714B67;font-weight:700;margin-top:4px">${fmtMAD(p.valeur_estimee)} · ${p.probabilite}%</div>
           </div>`).join('')}
         </div>`;
       }).join('')}
@@ -306,7 +306,7 @@ function renderRapports(el) {
     </div>
     <div class="stats-grid" style="margin-bottom:20px">
       ${[
-        ['💰','CA TTC total',fmtMAD(ca),'#2563eb'],
+        ['💰','CA TTC total',fmtMAD(ca),'#714B67'],
         ['📊','CA HT (base fiscale)',fmtMAD(ca_ht),'#7c3aed'],
         ['🧾','TVA collectée',fmtMAD(tva),'#f59e0b'],
         ['⏳','Créances impayées',fmtMAD(impaye),'#ef4444'],
@@ -327,10 +327,10 @@ function renderRapports(el) {
           return sorted.map(([nom,val])=>`
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <div style="width:110px;font-size:11px;font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nom}</div>
-              <div style="flex:1;height:7px;background:#1e3a5f;border-radius:4px">
-                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#60a5fa);width:${(val/max*100).toFixed(0)}%"></div>
+              <div style="flex:1;height:7px;background:#2D1B33;border-radius:4px">
+                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#714B67,#A77B9A);width:${(val/max*100).toFixed(0)}%"></div>
               </div>
-              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#2563eb;flex-shrink:0">${fmtMAD(val)}</div>
+              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#714B67;flex-shrink:0">${fmtMAD(val)}</div>
             </div>`).join('') || '<p style="color:#64748b;font-size:13px">Aucune donnée</p>';
         })()}
       </div>
@@ -341,7 +341,7 @@ function renderRapports(el) {
             ['TVA mensuelle','SIMPL-TVA · tax.gov.ma','Le 20 du mois suivant','#f59e0b'],
             ['IS trimestriel','Acompte 25%/trimestre','Le 31/03, 30/06, 30/09, 31/12','#f97316'],
             ['CNSS mensuel','Damancom · cnss.ma','Le 10 du mois suivant','#22c55e'],
-            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#2563eb'],
+            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#714B67'],
             ['Décl. annuelle IR','Modèle 9421 · DGI','Avant le 28 février','#7c3aed'],
           ].map(([t,p,d,c])=>`<div style="padding:8px;background:#ffffff04;border-radius:8px;margin-bottom:6px;border-left:3px solid ${c}">
             <div style="font-size:12px;font-weight:700;color:${c}">${t}</div>
@@ -354,8 +354,8 @@ function renderRapports(el) {
             ['TVA normal','20%'],['TVA réduit','10% · 14%'],['TVA super réduit','7%'],
             ['CNSS salarié','4.48% (plaf. 6 000 MAD)'],['AMO salarié','2.26%'],
             ['CNSS patronal','8.98% + AF 6.40%'],['SMIG','3 422 MAD/mois'],
-          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #06111e;font-size:12px">
-            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#2563eb">${v}</span>
+          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #0F0A14;font-size:12px">
+            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#714B67">${v}</span>
           </div>`).join('')}
         </div>
       </div>
@@ -376,9 +376,9 @@ function renderAlertes(el) {
     <div style="display:flex;flex-direction:column;gap:8px">
       ${alertes.length===0?'<div class="card" style="text-align:center;color:#64748b;padding:40px">Aucune alerte — لا توجد تنبيهات</div>':
       alertes.map(a=>{
-        const colors = {info:'#2563eb',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
+        const colors = {info:'#714B67',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
         const c = colors[a.type]||'#64748b';
-        return `<div style="background:#0a1628;border:1px solid #1e3a5f;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
+        return `<div style="background:#1A1024;border:1px solid #2D1B33;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
           <div style="width:38px;height:38px;background:${c}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
             ${a.type==='error'?'🔴':a.type==='warning'?'🟡':a.type==='success'?'🟢':'🔵'}
           </div>
@@ -442,7 +442,7 @@ function renderParametres(el) {
           ['TVA normal','20%','Art.89 CGI'],
         ].map(([l,v,d])=>`<div style="padding:10px;background:#ffffff04;border-radius:8px">
           <div style="font-size:11px;color:#64748b">${l}</div>
-          <div style="font-size:16px;font-weight:700;color:#2563eb">${v}</div>
+          <div style="font-size:16px;font-weight:700;color:#714B67">${v}</div>
           <div style="font-size:10px;color:#334155">${d}</div>
         </div>`).join('')}
       </div>
@@ -484,12 +484,12 @@ async function renderSuperAdmin(el) {
       <button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button>
     </div>
     ${pending.length>0?`
-    <div class="card" style="border:1px solid #2563eb40;margin-bottom:16px">
-      <div style="font-size:14px;font-weight:700;color:#2563eb;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
+    <div class="card" style="border:1px solid #714B6740;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#714B67;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
       ${pending.map(r=>`
         <div style="padding:12px;background:#ffffff06;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#2563eb">${r.societe}</span></div>
+            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#714B67">${r.societe}</span></div>
             <div style="font-size:12px;color:#64748b">${r.email} · ${r.phone} · ${r.secteur||'—'}</div>
           </div>
           <div style="display:flex;gap:8px">
@@ -508,7 +508,7 @@ async function renderSuperAdmin(el) {
               <td style="font-weight:700">${a.name}</td>
               <td style="font-size:12px;color:#64748b">${a.email}</td>
               <td style="font-size:12px">${a.company_name||'—'}</td>
-              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#2563eb15':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#2563eb':'#f59e0b'}">${a.plan}</span></td>
+              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#714B6715':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#714B67':'#f59e0b'}">${a.plan}</span></td>
               <td style="font-size:12px;color:${exp?'#ef4444':'#64748b'}">${a.expires_at?.slice(0,10)||'—'} (${days})</td>
               <td>${badge(a.status==='active'?'actif':'archive')}</td>
               <td style="font-size:11px;color:#334155">${a.last_login?.slice(0,16)||'Jamais'}</td>
@@ -664,7 +664,7 @@ window.onload = async () => {
       LEGAL = data.legal || {};
       await initApp();
     } catch(e) {
-      localStorage.removeItem('marocbiz_token'); token = null;
+      localStorage.removeItem('pmegest_token'); token = null;
     }
   }
 };

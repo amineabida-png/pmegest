@@ -1,9 +1,11 @@
 {
-  "name": "marocbiz-erp",
+  "name": "pmegest-erp",
   "version": "1.0.0",
-  "description": "MarocBiz ERP — Solution ERP complète pour PME marocaines 2026",
+  "description": "PMEGest.ma — Solution de Gestion PME Maroc 2026",
   "main": "src/server.js",
-  "scripts": { "start": "node src/server.js" },
+  "scripts": {
+    "start": "node src/server.js"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "better-sqlite3": "^9.4.3",
