@@ -220,7 +220,16 @@ tr:hover td{background:#ffffff04}
   </div>
 </div>
 <script>
-<div class="page-sub">Pipeline: ${fmtMAD(va_totale)} pondéré · ${prospects.length} prospects</div></div>
+function renderCRM(el) {
+  if (!el) el = document.getElementById('page-crm');
+  const prospects = state.crm || [];
+  const pipeline = ['nouveau','contacte','negocie','gagne','perdu'];
+  const va_totale = prospects.filter(p=>p.statut!=='perdu').reduce((a,p)=>a+p.valeur_estimee*p.probabilite/100,0);
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div><div class="page-title">🎯 CRM — العملاء المحتملون</div>
+      <div class="page-sub">Pipeline: ${fmtMAD(va_totale)} pondéré · ${prospects.length} prospects</div></div>
       <button class="btn btn-blue" onclick="crmForm()">+ Nouveau prospect</button>
     </div>
     <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px">
