@@ -161,7 +161,7 @@ const L = {
   AMO_SAL:0.0226, AMO_PAT:0.0411,
   IPE_SAL:0.0019, IPE_PLAFOND:6000, IPE_MAX:11.40,
   FP_TAUX_BAS:0.35, FP_PLAFOND_BAS:2500, FP_SEUIL:6500,
-  FP_TAUX_HAUT:0.25, FP_PLAFOND_HAUT:2916.67,
+  FP_TAUX_HAUT:0.25, FP_PLAFOND_HAUT:2916.00,
   IR:[
     {min:0,     max:30000,  taux:0,    ded:0},
     {min:30001, max:50000,  taux:0.10, ded:3000},
@@ -182,47 +182,99 @@ const L = {
 };
 
 function calculerBulletin(d) {
-  const sb = d.salaire_base||0;
-  const th = Math.round(sb/191.33*100)/100;
-  const annees = Math.floor((Date.now()-new Date(d.date_embauche||Date.now()))/(365.25*86400000));
-  const anc = L.ANCIENNETE.find(t=>annees>=t.min&&annees<t.max)||L.ANCIENNETE[0];
-  const panc = Math.round(sb*anc.taux*100)/100;
-  const hs25 = Math.round(th*(d.heures_sup_25||0)*L.HS_25*100)/100;
-  const hs50 = Math.round(th*(d.heures_sup_50||0)*L.HS_50*100)/100;
-  const brut = Math.round((sb+panc+hs25+hs50+(d.autres_primes||0)+(d.indemnite_transport||0))*100)/100;
-  const cnss = Math.round(Math.min(Math.min(brut,L.CNSS_PLAFOND)*L.CNSS_SAL,L.CNSS_MAX)*100)/100;
-  const amo = Math.round(brut*L.AMO_SAL*100)/100;
-  const ipe = Math.round(Math.min(Math.min(brut,L.IPE_PLAFOND)*L.IPE_SAL,L.IPE_MAX)*100)/100;
-  const sbi = Math.round((brut-(d.indemnite_transport||0))*100)/100;
-  const tfp = sbi<=L.FP_SEUIL?L.FP_TAUX_BAS:L.FP_TAUX_HAUT;
-  const pfp = sbi<=L.FP_SEUIL?L.FP_PLAFOND_BAS:L.FP_PLAFOND_HAUT;
-  const fp = Math.round(Math.min(sbi*tfp,pfp)*100)/100;
-  const rni_m = Math.round(Math.max(0,sbi-cnss-amo-fp)*100)/100;
-  const rni_a = Math.round(rni_m*12*100)/100;
-  let ir_brut_a=0;
-  if(rni_a>L.IR_SEUIL_AN){const tr=L.IR.find(t=>rni_a>=t.min&&rni_a<=t.max);if(tr&&tr.taux>0)ir_brut_a=Math.round((rni_a*tr.taux-tr.ded)*100)/100;}
-  const ir_brut_m=Math.round(ir_brut_a/12*100)/100;
-  const np=Math.min((d.conjoint?1:0)+Math.min(d.nb_enfants||0,5),6);
-  const ded_f=Math.round(Math.min(np*L.DED_FAMILLE,L.DED_MAX)/12*100)/100;
-  const ir_net=Math.round(Math.max(0,ir_brut_m-ded_f)*100)/100;
-  const ret=Math.round((cnss+amo+ipe+ir_net)*100)/100;
-  const net=Math.round((brut-ret)*100)/100;
-  const cnss_p=Math.round(Math.min(brut,L.CNSS_PLAFOND)*L.CNSS_PAT*100)/100;
-  const amo_p=Math.round(brut*L.AMO_PAT*100)/100;
-  const af_p=Math.round(brut*L.AF_PAT*100)/100;
-  const tfp_p=Math.round(brut*L.TFP_PAT*100)/100;
-  const cp=Math.round((cnss_p+amo_p+af_p+tfp_p)*100)/100;
+  const sb = d.salaire_base || 0;
+  const th = Math.round(sb / 191.33 * 100) / 100;
+
+  // Anciennete (Art.350 Code travail)
+  const annees = Math.floor((Date.now() - new Date(d.date_embauche || Date.now())) / (365.25 * 86400000));
+  const anc = L.ANCIENNETE.find(t => annees >= t.min && annees < t.max) || L.ANCIENNETE[0];
+  const panc = Math.round(sb * anc.taux * 100) / 100;
+
+  // HS
+  const hs25 = Math.round(th * (d.heures_sup_25 || 0) * L.HS_25 * 100) / 100;
+  const hs50 = Math.round(th * (d.heures_sup_50 || 0) * L.HS_50 * 100) / 100;
+
+  // Salaire brut
+  const brut = Math.round((sb + panc + hs25 + hs50 + (d.autres_primes || 0) + (d.indemnite_transport || 0)) * 100) / 100;
+
+  // CNSS salarie (4.48% plafonne 6000 MAD)
+  const cnss = Math.round(Math.min(Math.min(brut, L.CNSS_PLAFOND) * L.CNSS_SAL, L.CNSS_MAX) * 100) / 100;
+
+  // AMO salarie (2.26% sans plafond)
+  const amo = Math.round(brut * L.AMO_SAL * 100) / 100;
+
+  // IPE salarie (0.19% plafonne 6000 MAD)
+  const ipe = Math.round(Math.min(Math.min(brut, L.IPE_PLAFOND) * L.IPE_SAL, L.IPE_MAX) * 100) / 100;
+
+  // Total cotisations sociales (CNSS + AMO uniquement, IPE inclus dans certains cas)
+  const total_cot = Math.round((cnss + amo + ipe) * 100) / 100;
+
+  // RNI mensuel = Brut - CNSS - AMO (IPE non deduit du RNI pour calcul IR - cf. Art.73 CGI)
+  const rni_m = Math.round(Math.max(0, brut - cnss - amo) * 100) / 100;
+
+  // Frais professionnels (Art.59 CGI) - base = RNI mensuel
+  // Si RNI <= 6500: 35% plafonne 2500 MAD/mois
+  // Si RNI > 6500: 25% plafonne 2916.67 MAD/mois
+  const taux_fp = rni_m <= 6500 ? L.FP_TAUX_BAS : L.FP_TAUX_HAUT;
+  const plaf_fp = rni_m <= 6500 ? L.FP_PLAFOND_BAS : L.FP_PLAFOND_HAUT;
+  const fp = Math.round(Math.min(rni_m * taux_fp, plaf_fp) * 100) / 100;
+
+  // Base imposable IR = RNI - Frais pro
+  const base_ir = Math.round(Math.max(0, rni_m - fp) * 100) / 100;
+
+  // IR brut - BAREME MENSUEL DGI (Art.73 CGI - tranches mensuelles)
+  // Seuil exoneration: 3333.33 MAD/mois (40000/12)
+  let ir_brut = 0;
+  if (base_ir <= 3333.33) {
+    ir_brut = 0;
+  } else if (base_ir <= 5000) {
+    ir_brut = Math.round((base_ir * 0.10 - 333.33) * 100) / 100;
+  } else if (base_ir <= 6666.67) {
+    ir_brut = Math.round((base_ir * 0.20 - 833.33) * 100) / 100;
+  } else if (base_ir <= 8333.33) {
+    ir_brut = Math.round((base_ir * 0.30 - 1499.99) * 100) / 100;
+  } else if (base_ir <= 15000) {
+    ir_brut = Math.round((base_ir * 0.34 - 1833.33) * 100) / 100;
+  } else {
+    ir_brut = Math.round((base_ir * 0.37 - 2283.33) * 100) / 100;
+  }
+
+  // Deduction charges de famille: 50 MAD/mois/personne (max conjoint + 6 enfants)
+  // LF 2026: 600 MAD/an = 50 MAD/mois par personne
+  const nb_pers = Math.min((d.conjoint ? 1 : 0) + Math.min(d.nb_enfants || 0, 6), 7);
+  const ded_fam = Math.round(nb_pers * 50 * 100) / 100;
+
+  // IR net
+  const ir_net = Math.round(Math.max(0, ir_brut - ded_fam) * 100) / 100;
+
+  // Total retenues salariales (CNSS + AMO + IPE + IR)
+  const retenues = Math.round((cnss + amo + ipe + ir_net) * 100) / 100;
+
+  // Salaire net = Brut - CNSS - AMO - IR (IPE verse separement par l'employeur en cas de chomage)
+  // Conforme a la pratique marocaine: l'IPE n'est pas deduit du net a payer
+  const net = Math.round((brut - cnss - amo - ir_net) * 100) / 100;
+
+  // Charges patronales
+  const cnss_p = Math.round(Math.min(brut, L.CNSS_PLAFOND) * L.CNSS_PAT * 100) / 100;
+  const amo_p = Math.round(brut * L.AMO_PAT * 100) / 100;
+  const af_p = Math.round(brut * L.AF_PAT * 100) / 100;
+  const tfp_p = Math.round(brut * L.TFP_PAT * 100) / 100;
+  const cp = Math.round((cnss_p + amo_p + af_p + tfp_p) * 100) / 100;
+
   return {
-    salaire_base:sb,prime_anciennete:panc,taux_anciennete:anc.taux,annees_anciennete:annees,
-    hs25_montant:hs25,hs50_montant:hs50,autres_primes:d.autres_primes||0,
-    indemnite_transport:d.indemnite_transport||0,salaire_brut:brut,
-    cnss_salarie:cnss,amo_salarie:amo,ipe_salarie:ipe,
-    salaire_brut_imposable:sbi,frais_pro:fp,taux_frais_pro:tfp,
-    rni_mensuel:rni_m,rni_annuel:rni_a,ir_brut:ir_brut_m,
-    deduction_famille:ded_f,ir_net,total_retenues:ret,salaire_net:net,
-    cnss_patronal:cnss_p,amo_patronal:amo_p,af_patronal:af_p,tfp_patronal:tfp_p,
-    charge_patronale_total:cp,cout_employeur:Math.round((brut+cp)*100)/100,
-    taux_horaire:th,smig_2026:L.SMIG
+    salaire_base: sb, prime_anciennete: panc, taux_anciennete: anc.taux,
+    annees_anciennete: annees, hs25_montant: hs25, hs50_montant: hs50,
+    autres_primes: d.autres_primes || 0, indemnite_transport: d.indemnite_transport || 0,
+    salaire_brut: brut,
+    cnss_salarie: cnss, amo_salarie: amo, ipe_salarie: ipe,
+    total_cotisations: total_cot,
+    rni_mensuel: rni_m, frais_pro: fp, taux_frais_pro: taux_fp,
+    base_ir: base_ir, ir_brut: ir_brut,
+    nb_personnes_charge: nb_pers, deduction_famille: ded_fam,
+    ir_net: ir_net, total_retenues: retenues, salaire_net: net,
+    cnss_patronal: cnss_p, amo_patronal: amo_p, af_patronal: af_p, tfp_patronal: tfp_p,
+    charge_patronale_total: cp, cout_employeur: Math.round((brut + cp) * 100) / 100,
+    taux_horaire: th, smig_2026: L.SMIG
   };
 }
 
