@@ -515,25 +515,22 @@ function renderAlertes(el) {
   if (!el) el = document.getElementById('page-alertes');
   const alertes = state.alertes || [];
   const unread = alertes.filter(a=>!a.lu).length;
+  const colors = {info:'#1a5fb4',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
   el.innerHTML = `
     <div class="page-header">
       <div><div class="page-title">🔔 Alertes — التنبيهات</div>
-      <div class="page-sub">${unread} non lue(s) · Alertes fiscales et légales automatiques</div></div>
+      <div class="page-sub">${unread} non lue(s)</div></div>
       <button class="btn btn-ghost" onclick="marquerToutLu()">✓ Tout marquer lu</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${alertes.length===0?'<div class="card" style="text-align:center;color:#64748b;padding:40px">Aucune alerte — لا توجد تنبيهات</div>':
+      ${alertes.length===0?'<div class="card" style="text-align:center;color:#64748b;padding:40px">Aucune alerte</div>':
       alertes.map(a=>{
-        const colors = {info:'#1a5fb4',warning:'#f59e0b',error:'#ef4444',success:'#22c55e'};
         const c = colors[a.type]||'#64748b';
-        return `<div style="background:#0a1628;border:1px solid #0f1e35;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;opacity:${a.lu?0.6:1}">
-          <div style="width:38px;height:38px;background:${c}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
-            ${a.type==='error'?'🔴':a.type==='warning'?'🟡':a.type==='success'?'🟢':'🔵'}
-          </div>
+        return `<div style="background:#0a1628;border:1px solid #0f1e35;border-left:4px solid ${c};border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;opacity:${a.lu?0.6:1}">
+          <div style="width:36px;height:36px;background:${c}15;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${a.type==='error'?'🔴':a.type==='warning'?'🟡':a.type==='success'?'🟢':'🔵'}</div>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:700">${a.titre}</div>
             <div style="font-size:12px;color:#64748b;margin-top:2px">${a.message||''}</div>
-            <div style="font-size:10px;color:#334155;margin-top:4px">${fmtDate(a.created_at)}</div>
           </div>
           ${!a.lu?`<button class="btn btn-ghost btn-sm" onclick="marquerLu(${a.id})">Lu</button>`:''}
         </div>`;
@@ -542,190 +539,22 @@ function renderAlertes(el) {
 }
 
 async function marquerLu(id) {
-  try { await api('PUT','/api/alertes/'+id+'/lu',{}); await loadAll(); renderPage('alertes'); }
-  catch(e){}
+  try { await api('PUT','/api/alertes/'+id+'/lu',{}); await loadAll(); renderPage('alertes'); } catch(e){}
 }
 async function marquerToutLu() {
-  try { await api('PUT','/api/alertes/all/lu',{}); await loadAll(); renderPage('alertes'); toast('Toutes lues ✓','success'); }
-  catch(e){}
+  try { await api('PUT','/api/alertes/all/lu',{}); await loadAll(); renderPage('alertes'); toast('Toutes lues ✓','success'); } catch(e){}
 }
 
-// ─── PARAMÈTRES ───────────────────────────────────────────────
 
-async function saveProfile() {
-  const d = {
-    company_name: document.getElementById('cfg_name').value,
-    company_ice: document.getElementById('cfg_ice').value,
-    company_if: document.getElementById('cfg_if').value,
-    company_rc: document.getElementById('cfg_rc').value,
-    company_patente: document.getElementById('cfg_pat').value,
-    company_phone: document.getElementById('cfg_tel').value,
-    company_address: document.getElementById('cfg_adr').value,
-    company_city: document.getElementById('cfg_ville').value,
-    company_email: document.getElementById('cfg_email').value,
-  };
-  try {
-    await api('PUT','/api/auth/profile',d);
-    currentAccount = {...currentAccount,...d};
-    toast('Profil sauvegardé ✓','success');
-  } catch(e) { toast(e.error||'Erreur','error'); }
-}
-
-// ─── SUPER ADMIN ──────────────────────────────────────────────
-async function createAccount() {
-  openModal('Créer un compte client',`
-    <div class="form-grid">
-      <div class="form-field"><label>Nom *</label><input id="ac_name" placeholder="Mohammed Alami"></div>
-      <div class="form-field"><label>Email *</label><input type="email" id="ac_email" placeholder="contact@societe.ma"></div>
-      <div class="form-field"><label>Mot de passe *</label><input type="password" id="ac_pass"></div>
-      <div class="form-field"><label>Société</label><input id="ac_soc" placeholder="ALAMI SARL"></div>
-      <div class="form-field full"><label>Plan</label><select id="ac_plan">
-        <option value="trial">Essai 48h — Gratuit</option>
-        <option value="starter">Starter 30j — 399 MAD/mois</option>
-        <option value="pro">Pro 1an — 799 MAD/mois</option>
-        <option value="enterprise">Enterprise — Illimité</option>
-      </select></div>
-    </div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
-     <button class="btn btn-blue" onclick="saveNewAccount()">Créer</button>`
-  );
-}
-
-async function saveNewAccount() {
-  const d = { name:document.getElementById('ac_name').value, email:document.getElementById('ac_email').value, password:document.getElementById('ac_pass').value, company_name:document.getElementById('ac_soc').value, plan:document.getElementById('ac_plan').value };
-  if (!d.name||!d.email||!d.password) return toast('Nom, email et MDP requis','error');
-  try { await api('POST','/api/admin/accounts',d); closeModal(); renderPage('superadmin'); toast('Compte créé ✓','success'); }
-  catch(e) { toast(e.error||'Erreur','error'); }
-}
-
-async function editAccount(id) {
-  const accounts = await api('GET','/api/admin/accounts');
-  const a = accounts.find(x=>x.id==id);
-  if (!a) return;
-  openModal('Modifier compte',`
-    <div class="form-grid">
-      <div class="form-field"><label>Nom</label><input id="ea_name" value="${a.name}"></div>
-      <div class="form-field"><label>Nouveau MDP</label><input type="password" id="ea_pass" placeholder="Laisser vide = inchangé"></div>
-      <div class="form-field"><label>Plan</label><select id="ea_plan">
-        <option value="trial" ${a.plan==='trial'?'selected':''}>Essai 48h</option>
-        <option value="starter" ${a.plan==='starter'?'selected':''}>Starter</option>
-        <option value="pro" ${a.plan==='pro'?'selected':''}>Pro</option>
-        <option value="enterprise" ${a.plan==='enterprise'?'selected':''}>Enterprise</option>
-      </select></div>
-      <div class="form-field"><label>Statut</label><select id="ea_status"><option value="active" ${a.status==='active'?'selected':''}>Actif</option><option value="suspended" ${a.status==='suspended'?'selected':''}>Suspendu</option></select></div>
-    </div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
-     <button class="btn btn-blue" onclick="saveEditAccount(${id})">Enregistrer</button>`
-  );
-}
-
-async function saveEditAccount(id) {
-  const d = { name:document.getElementById('ea_name').value, plan:document.getElementById('ea_plan').value, status:document.getElementById('ea_status').value };
-  const pass = document.getElementById('ea_pass').value;
-  if (pass) d.newPassword = pass;
-  try { await api('PUT','/api/admin/accounts/'+id,d); closeModal(); renderPage('superadmin'); toast('Compte mis à jour ✓','success'); }
-  catch(e) { toast(e.error||'Erreur','error'); }
-}
-
-async function extendAccount(id) {
-  try { await api('PUT','/api/admin/accounts/'+id,{plan:'starter'}); renderPage('superadmin'); toast('+30j ajoutés ✓','success'); }
-  catch(e){}
-}
-
-async function deleteAccount(id) {
-  confirm2('Supprimer compte','Supprimer définitivement ce compte et toutes ses données ?', async()=>{
-    try { await api('DELETE','/api/admin/accounts/'+id); renderPage('superadmin'); toast('Compte supprimé ✓','success'); }
-    catch(e){}
-  });
-}
-
-function approveTrialForm(id, name, email) {
-  openModal('Approuver — '+name,`
-    <div style="padding:12px;background:#22c55e15;border-radius:10px;margin-bottom:14px;font-size:13px;color:#22c55e">✓ Créer compte pour: ${name} · ${email}</div>
-    <div class="form-grid">
-      <div class="form-field"><label>Plan</label><select id="ap_plan">
-        <option value="trial">Essai 48h</option><option value="starter" selected>Starter 30j</option><option value="pro">Pro 1an</option><option value="enterprise">Enterprise</option>
-      </select></div>
-      <div class="form-field"><label>Mot de passe *</label><input id="ap_pass" value="MarocBiz2026!"></div>
-    </div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
-     <button class="btn btn-success" onclick="approveTrial(${id})">✓ Créer le compte</button>`
-  );
-}
-
-async function approveTrial(id) {
-  const plan = document.getElementById('ap_plan').value;
-  const password = document.getElementById('ap_pass').value;
-  if (!password) return toast('MDP requis','error');
-  try {
-    const trials = await api('GET','/api/admin/trials');
-    const t = trials.find(x=>x.id==id);
-    if (!t) return;
-    await api('POST','/api/admin/accounts',{name:t.prenom+' '+t.nom,email:t.email,password,company_name:t.societe,plan});
-    closeModal(); renderPage('superadmin'); toast('Compte créé ✓ — '+t.email+' / '+password,'success');
-  } catch(e) { toast(e.error||'Erreur','error'); }
-}
-
-// ─── TRIAL ────────────────────────────────────────────────────
-function showTrialModal() {
-  ['tr_prenom','tr_nom','tr_phone','tr_email','tr_societe'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('trialErr').style.display='none';
-  document.getElementById('trialOk').style.display='none';
-  document.getElementById('trialFoot').style.display='flex';
-  document.getElementById('trialModal').classList.add('open');
-}
-
-async function submitTrial() {
-  const nom=document.getElementById('tr_nom').value.trim(), prenom=document.getElementById('tr_prenom').value.trim();
-  const phone=document.getElementById('tr_phone').value.trim(), email=document.getElementById('tr_email').value.trim();
-  const societe=document.getElementById('tr_societe').value.trim(), secteur=document.getElementById('tr_secteur').value;
-  const err=document.getElementById('trialErr');
-  err.style.display='none';
-  if (!nom||!prenom||!phone||!email||!societe) { err.textContent='Tous les champs sont obligatoires'; err.style.display='block'; return; }
-  const btn=document.getElementById('trialBtn'); btn.textContent='Envoi...'; btn.disabled=true;
-  try {
-    await api('POST','/api/trial',{nom,prenom,phone,email,societe,secteur});
-    document.getElementById('trialOk').style.display='block';
-    document.getElementById('trialFoot').style.display='none';
-  } catch(e) {
-    err.textContent=e.error||'Erreur. Réessayez.'; err.style.display='block';
-    btn.textContent='Envoyer — إرسال'; btn.disabled=false;
-  }
-}
-
-// ─── UTILS ────────────────────────────────────────────────────
-async function delItem(resource, id, label) {
-  confirm2('Supprimer', 'Supprimer '+label+' ? Action irréversible.', async()=>{
-    try {
-      await api('DELETE','/api/'+resource+'/'+id);
-      await loadAll(); renderPage(currentPage); toast('Supprimé ✓','success');
-    } catch(e) { toast(e.error||'Erreur','error'); }
-  });
-}
-
-// ─── AUTO LOGIN ───────────────────────────────────────────────
-window.onload = async () => {
-  if (token) {
-    try {
-      const data = await api('GET','/api/auth/me');
-      currentAccount = data.account;
-      LEGAL = data.legal || {};
-      await initApp();
-    } catch(e) {
-      localStorage.removeItem('pmegest_token'); token = null;
-    }
-  }
-};
-
-// ─── DASHBOARD ────────────────────────────────────────────────
 async function renderDashboard(el) {
   if (!el) el = document.getElementById('page-dashboard');
   let stats = {};
   try { stats = await api('GET', '/api/dashboard'); } catch(e){}
+  const smig = LEGAL.SMIG || 3422;
   el.innerHTML = `
     <div style="margin-bottom:22px">
       <div class="page-title">📊 Dashboard — لوحة التحكم</div>
-      <div class="page-sub">Conforme LF 2026 · Bonjour, ${currentAccount.name}</div>
+      <div class="page-sub">Conforme LF 2026 · Bonjour, ${currentAccount.name} · ${currentAccount.company_name||''}</div>
     </div>
     <div class="stats-grid">
       ${[
@@ -746,27 +575,21 @@ async function renderDashboard(el) {
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
       <div class="card">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px">CA mensuel (12 mois)</div>
-        ${(stats.ca_par_mois||[]).length>0?`<div style="display:flex;align-items:flex-end;gap:4px;height:80px">
-          ${(stats.ca_par_mois||[]).map(m=>{const max=Math.max(...(stats.ca_par_mois||[]).map(x=>x.ca),1);const h=Math.round((m.ca/max)*100);
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="width:100%;height:${h}px;background:linear-gradient(to top,#1a5fb4,#5a9fd4);border-radius:3px 3px 0 0;min-height:2px" title="${fmtMAD(m.ca)}"></div>
-            <div style="font-size:8px;color:#334155">${m.mois?.slice(5)||''}</div>
-          </div>`;}).join('')}
-        </div>`:'<p style="color:#64748b;font-size:13px">Aucune donnée</p>'}
+        ${(()=>{const months=stats.ca_par_mois||[];if(!months.length)return '<p style="color:#64748b">Aucune donnée</p>';const max=Math.max(...months.map(m=>m.ca),1);return '<div style="display:flex;align-items:flex-end;gap:4px;height:80px">'+months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;height:${Math.round(m.ca/max*100)}px;background:linear-gradient(to top,#1a5fb4,#5a9fd4);border-radius:3px 3px 0 0;min-height:2px"></div><div style="font-size:8px;color:#334155">${(m.mois||'').slice(5)}</div></div>`).join('')+'</div>';})()}
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card">
           <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ Échéances légales</div>
           <div style="padding:8px;background:#22c55e15;border-radius:8px;margin-bottom:6px">
-            <div style="font-size:11px;color:#22c55e;font-weight:700">CNSS — le ${new Date().getMonth()+2}/2026</div>
+            <div style="font-size:11px;color:#22c55e;font-weight:700">CNSS — le ${new Date().getMonth()+2}/${new Date().getFullYear()}</div>
             <div style="font-size:10px;color:#64748b">CNSS + AMO · Damancom</div>
           </div>
           <div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:6px">
-            <div style="font-size:11px;color:#1a5fb4;font-weight:700">IR — le ${new Date().getMonth()+2}/2026</div>
-            <div style="font-size:10px;color:#64748b">Retenue source · DGI SIMPL-IR</div>
+            <div style="font-size:11px;color:#1a5fb4;font-weight:700">IR — le ${new Date().getMonth()+2}/${new Date().getFullYear()}</div>
+            <div style="font-size:10px;color:#64748b">Retenue source · DGI</div>
           </div>
           <div style="padding:8px;background:#f59e0b15;border-radius:8px">
-            <div style="font-size:11px;color:#f59e0b;font-weight:700">SMIG 2026: ${LEGAL.SMIG||3422} MAD</div>
+            <div style="font-size:11px;color:#f59e0b;font-weight:700">SMIG 2026: ${smig} MAD</div>
             <div style="font-size:10px;color:#64748b">Art.356 Code travail</div>
           </div>
         </div>
@@ -781,7 +604,7 @@ async function renderDashboard(el) {
     </div>`;
 }
 
-// ─── TIERS ────────────────────────────────────────────────────
+
 function renderTiers(type, el) {
   if (!el) el = document.getElementById('page-'+(type==='client'?'clients':'fournisseurs'));
   const icon = type==='client'?'👥':'🏪';
