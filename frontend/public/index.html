@@ -510,83 +510,7 @@ async function saveCRM(id) {
 }
 
 // ─── RAPPORTS ─────────────────────────────────────────────────
-function renderRapports(el) {
-  if (!el) el = document.getElementById('page-rapports');
-  const docs = state.documents || [];
-  const buls = state.bulletins || [];
-  const facts = docs.filter(d=>d.type==='facture'&&d.statut==='valide');
-  const ca = facts.reduce((a,f)=>a+f.total_ttc,0);
-  const ca_ht = facts.reduce((a,f)=>a+f.total_ht,0);
-  const tva = facts.reduce((a,f)=>a+f.total_tva,0);
-  const impaye = facts.filter(f=>f.montant_paye<f.total_ttc).reduce((a,f)=>a+(f.total_ttc-f.montant_paye),0);
-  const masse = buls.reduce((a,b)=>a+b.salaire_brut,0);
-  const charges_pat = buls.reduce((a,b)=>a+(b.charge_patronale_total||0),0);
-  const ir_total = buls.reduce((a,b)=>a+b.ir_net,0);
 
-  el.innerHTML = `
-    <div class="page-header">
-      <div><div class="page-title">📈 Rapports — التقارير</div>
-      <div class="page-sub">Conformité fiscale 2026 · CGI · CNSS · DGI</div></div>
-    </div>
-    <div class="stats-grid" style="margin-bottom:20px">
-      ${[
-        ['💰','CA TTC total',fmtMAD(ca),'#1a5fb4'],
-        ['📊','CA HT (base fiscale)',fmtMAD(ca_ht),'#7c3aed'],
-        ['🧾','TVA collectée',fmtMAD(tva),'#f59e0b'],
-        ['⏳','Créances impayées',fmtMAD(impaye),'#ef4444'],
-        ['💼','Masse salariale brute',fmtMAD(masse),'#f97316'],
-        ['🏛','Charges patronales',fmtMAD(charges_pat),'#ef4444'],
-        ['📋','IR retenu à la source',fmtMAD(ir_total),'#f59e0b'],
-        ['💸','Coût total employeur',fmtMAD(masse+charges_pat),'#dc2626'],
-      ].map(([i,l,v,c])=>`<div class="stat-card"><div class="stat-icon" style="background:${c}18">${i}</div><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('')}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card">
-        <div style="font-size:14px;font-weight:700;margin-bottom:14px">CA par client — رقم الأعمال بحسب الزبون</div>
-        ${(() => {
-          const byClient = {};
-          facts.forEach(f => { byClient[f.tiers_nom||'Sans nom'] = (byClient[f.tiers_nom||'Sans nom']||0)+f.total_ttc; });
-          const sorted = Object.entries(byClient).sort((a,b)=>b[1]-a[1]).slice(0,8);
-          const max = Math.max(...sorted.map(x=>x[1]),1);
-          return sorted.map(([nom,val])=>`
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <div style="width:110px;font-size:11px;font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nom}</div>
-              <div style="flex:1;height:7px;background:#0f1e35;border-radius:4px">
-                <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#1a5fb4,#5a9fd4);width:${(val/max*100).toFixed(0)}%"></div>
-              </div>
-              <div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:#1a5fb4;flex-shrink:0">${fmtMAD(val)}</div>
-            </div>`).join('') || '<p style="color:#64748b;font-size:13px">Aucune donnée</p>';
-        })()}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="card">
-          <div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 Obligations déclaratives 2026</div>
-          ${[
-            ['TVA mensuelle','SIMPL-TVA · tax.gov.ma','Le 20 du mois suivant','#f59e0b'],
-            ['IS trimestriel','Acompte 25%/trimestre','Le 31/03, 30/06, 30/09, 31/12','#f97316'],
-            ['CNSS mensuel','Damancom · cnss.ma','Le 10 du mois suivant','#22c55e'],
-            ['IR retenue source','SIMPL-IR · DGI','Le 20 du mois suivant','#1a5fb4'],
-            ['Décl. annuelle IR','Modèle 9421 · DGI','Avant le 28 février','#7c3aed'],
-          ].map(([t,p,d,c])=>`<div style="padding:8px;background:#ffffff04;border-radius:8px;margin-bottom:6px;border-left:3px solid ${c}">
-            <div style="font-size:12px;font-weight:700;color:${c}">${t}</div>
-            <div style="font-size:11px;color:#64748b">${p} · ${d}</div>
-          </div>`).join('')}
-        </div>
-        <div class="card">
-          <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ Taux légaux 2026</div>
-          ${[
-            ['TVA normal','20%'],['TVA réduit','10% · 14%'],['TVA super réduit','7%'],
-            ['CNSS salarié','4.48% (plaf. 6 000 MAD)'],['AMO salarié','2.26%'],
-            ['CNSS patronal','8.98% + AF 6.40%'],['SMIG','3 422 MAD/mois'],
-          ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #06111e;font-size:12px">
-            <span style="color:#64748b">${l}</span><span style="font-weight:700;color:#1a5fb4">${v}</span>
-          </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
-}
-
-// ─── ALERTES ──────────────────────────────────────────────────
 function renderAlertes(el) {
   if (!el) el = document.getElementById('page-alertes');
   const alertes = state.alertes || [];
@@ -627,51 +551,6 @@ async function marquerToutLu() {
 }
 
 // ─── PARAMÈTRES ───────────────────────────────────────────────
-function renderParametres(el) {
-  if (!el) el = document.getElementById('page-parametres');
-  const acc = currentAccount;
-  el.innerHTML = `
-    <div class="page-header">
-      <div><div class="page-title">⚙ Paramètres — الإعدادات</div>
-      <div class="page-sub">Configuration entreprise · Mentions légales factures</div></div>
-    </div>
-    <div class="card" style="max-width:700px">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Votre entreprise — شركتك</div>
-      <div style="font-size:11px;color:#22c55e;margin-bottom:16px">✓ Ces informations apparaissent sur vos factures (obligatoire CGI Art.145)</div>
-      <div class="form-grid">
-        <div class="form-field full"><label>Raison sociale *</label><input id="cfg_name" value="${acc.company_name||''}"></div>
-        <div class="form-field"><label>ICE (15 chiffres) *</label><input id="cfg_ice" value="${acc.company_ice||''}" maxlength="15"></div>
-        <div class="form-field"><label>Identifiant Fiscal (IF) *</label><input id="cfg_if" value="${acc.company_if||''}"></div>
-        <div class="form-field"><label>Registre Commerce (RC) *</label><input id="cfg_rc" value="${acc.company_rc||''}"></div>
-        <div class="form-field"><label>Patente</label><input id="cfg_pat" value="${acc.company_patente||''}"></div>
-        <div class="form-field"><label>Téléphone</label><input id="cfg_tel" value="${acc.company_phone||''}"></div>
-        <div class="form-field full"><label>Adresse</label><input id="cfg_adr" value="${acc.company_address||''}"></div>
-        <div class="form-field"><label>Ville</label><input id="cfg_ville" value="${acc.company_city||''}"></div>
-        <div class="form-field"><label>Email entreprise</label><input type="email" id="cfg_email" value="${acc.company_email||''}"></div>
-      </div>
-      <button class="btn btn-blue" onclick="saveProfile()" style="margin-top:16px">💾 Enregistrer — حفظ</button>
-    </div>
-    <div class="card" style="max-width:700px;margin-top:16px">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px">⚖️ Taux légaux en vigueur — LF 2026</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        ${[
-          ['CNSS salarié','4.48%','Plafond 6 000 MAD'],
-          ['CNSS patronal','8.98%','Plafond 6 000 MAD'],
-          ['AMO salarié','2.26%','Sans plafond'],
-          ['AMO patronal','4.11%','Sans plafond'],
-          ['AF patronal','6.40%','Sans plafond'],
-          ['TFP patronal','1.60%','Sans plafond'],
-          ['IPE salarié','0.19%','Plafond 6 000 MAD'],
-          ['SMIG 2026','3 422 MAD','17.92 MAD/h'],
-          ['TVA normal','20%','Art.89 CGI'],
-        ].map(([l,v,d])=>`<div style="padding:10px;background:#ffffff04;border-radius:8px">
-          <div style="font-size:11px;color:#64748b">${l}</div>
-          <div style="font-size:16px;font-weight:700;color:#1a5fb4">${v}</div>
-          <div style="font-size:10px;color:#334155">${d}</div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-}
 
 async function saveProfile() {
   const d = {
@@ -693,61 +572,7 @@ async function saveProfile() {
 }
 
 // ─── SUPER ADMIN ──────────────────────────────────────────────
-async function renderSuperAdmin(el) {
-  if (!el) el = document.getElementById('page-superadmin');
-  if (currentAccount.role !== 'super') { el.innerHTML='<div class="card" style="text-align:center;color:#ef4444;padding:40px">Accès refusé</div>'; return; }
-  let accounts=[], trials=[];
-  try { [accounts,trials] = await Promise.all([api('GET','/api/admin/accounts'),api('GET','/api/admin/trials')]); }
-  catch(e){}
-  const pending = trials.filter(t=>t.status==='en_attente');
-
-  el.innerHTML = `
-    <div class="page-header">
-      <div><div class="page-title">👑 Super Admin — المشرف العام</div>
-      <div class="page-sub">${accounts.filter(a=>a.role!=='super').length} comptes · ${pending.length} demande(s) d'essai</div></div>
-      <button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button>
-    </div>
-    ${pending.length>0?`
-    <div class="card" style="border:1px solid #1a5fb440;margin-bottom:16px">
-      <div style="font-size:14px;font-weight:700;color:#1a5fb4;margin-bottom:12px">📋 Demandes d'essai (${pending.length})</div>
-      ${pending.map(r=>`
-        <div style="padding:12px;background:#ffffff06;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-weight:700">${r.prenom} ${r.nom} · <span style="color:#1a5fb4">${r.societe}</span></div>
-            <div style="font-size:12px;color:#64748b">${r.email} · ${r.phone} · ${r.secteur||'—'}</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-success btn-sm" onclick="approveTrialForm(${r.id},'${r.prenom} ${r.nom}','${r.email}')">✓ Approuver</button>
-          </div>
-        </div>`).join('')}
-    </div>`:''}
-    <div class="card">
-      <div class="table-wrap"><table>
-        <thead><tr><th>Nom</th><th>Email</th><th>Société</th><th>Plan</th><th>Expiration</th><th>Statut</th><th>Dernière cnx</th><th>Actions</th></tr></thead>
-        <tbody>
-          ${accounts.filter(a=>a.role!=='super').map(a=>{
-            const days = a.plan==='enterprise'?'∞':Math.max(0,Math.ceil((new Date(a.expires_at)-new Date())/86400000))+'j';
-            const exp = a.plan!=='enterprise'&&a.expires_at&&new Date(a.expires_at)<new Date();
-            return `<tr>
-              <td style="font-weight:700">${a.name}</td>
-              <td style="font-size:12px;color:#64748b">${a.email}</td>
-              <td style="font-size:12px">${a.company_name||'—'}</td>
-              <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${a.plan==='enterprise'?'#22c55e15':a.plan==='pro'?'#1a5fb415':'#f59e0b15'};color:${a.plan==='enterprise'?'#22c55e':a.plan==='pro'?'#1a5fb4':'#f59e0b'}">${a.plan}</span></td>
-              <td style="font-size:12px;color:${exp?'#ef4444':'#64748b'}">${a.expires_at?.slice(0,10)||'—'} (${days})</td>
-              <td>${badge(a.status==='active'?'actif':'archive')}</td>
-              <td style="font-size:11px;color:#334155">${a.last_login?.slice(0,16)||'Jamais'}</td>
-              <td><div style="display:flex;gap:4px">
-                <button class="btn btn-ghost btn-sm" onclick="editAccount(${a.id})">Modifier</button>
-                <button class="btn btn-warning btn-sm" onclick="extendAccount(${a.id})">+30j</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id})">Suppr.</button>
-              </div></td>
-            </tr>`;
-          }).join('')||'<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucun compte</td></tr>'}
-        </tbody>
-      </table></div>
-    </div>`;
-}
-
+async 
 function createAccount() {
   openModal('Créer un compte client',`
     <div class="form-grid">
