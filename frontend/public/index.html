@@ -163,6 +163,10 @@ tr:hover td{background:#ffffff04}
       <div id="page-parametres" class="page"></div>
       <div id="page-superadmin" class="page"></div>
       <div id="page-stock" class="page"></div>
+      <div id="page-bl" class="page"></div>
+      <div id="page-bc" class="page"></div>
+      <div id="page-proforma" class="page"></div>
+      <div id="page-avoir" class="page"></div>
       <div id="page-declarations" class="page"></div>
       <div id="page-chantiers" class="page"></div>
     </div>
@@ -352,7 +356,11 @@ function buildSidebar() {
   var items = [
     {s:'PRINCIPAL'},{id:'dashboard',icon:'📊',label:'Dashboard'},
     {s:'COMMERCIAL'},{id:'facturation',icon:'💰',label:'Facturation'},
+    {id:'avoir',icon:'↩️',label:'Avoirs'},
+    {id:'proforma',icon:'📄',label:'Facture Proforma'},
     {id:'devis',icon:'📋',label:'Devis'},
+    {id:'bl',icon:'🚚',label:'Bons de Livraison'},
+    {id:'bc',icon:'🛒',label:'Bons de Commande'},
     {id:'clients',icon:'👥',label:'Clients'},
     {id:'fournisseurs',icon:'🏪',label:'Fournisseurs'},
     {id:'articles',icon:'📦',label:'Articles & Stock'},
@@ -418,6 +426,10 @@ function renderPage(p) {
   else if (p === 'alertes') renderAlertes();
   else if (p === 'parametres') renderParametres();
   else if (p === 'superadmin') renderSuperAdmin();
+  else if (p === 'bl') renderDocs('bon_livraison','Bons de Livraison','🚚');
+  else if (p === 'bc') renderDocs('bon_commande','Bons de Commande Fournisseurs','🛒');
+  else if (p === 'proforma') renderDocs('proforma','Factures Proforma','📄');
+  else if (p === 'avoir') renderDocs('avoir','Avoirs sur Factures','↩️');
   else if (p === 'stock') renderStock();
   else if (p === 'declarations') renderDeclarations();
   else if (p === 'chantiers') renderChantiers();
@@ -642,29 +654,49 @@ async function saveArticle(id) {
 // DOCUMENTS
 // ═══════════════════════════════════════════════════════════════
 function renderDocs(type, label, icon) {
-  var el = document.getElementById('page-'+(type==='facture'?'facturation':'devis'));
+  var pageMap = {facture:'facturation',devis:'devis',bon_livraison:'bl',bon_commande:'bc',proforma:'proforma',avoir:'avoir'};
+  var el = document.getElementById('page-'+(pageMap[type]||type));
+  if (!el) el = document.getElementById('page-facturation');
   var docs = state.documents.filter(function(d){return d.type===type;});
+  var isFournisseur = type==='bon_commande';
+  var isAvoir = type==='avoir';
   var total = docs.filter(function(d){return d.statut==='valide';}).reduce(function(a,d){return a+d.total_ttc;},0);
+  var colTiers = isFournisseur ? 'Fournisseur' : 'Client';
+  var btnLabels = {facture:'Nouvelle facture',devis:'Nouveau devis',bon_livraison:'Nouveau BL',bon_commande:'Nouveau BC Fournisseur',proforma:'Nouvelle Proforma',avoir:'Nouvel Avoir'};
+  var btnLabel = btnLabels[type] || 'Nouveau';
+  var subInfo = {
+    bon_commande: docs.length+' BC · Commandes fournisseurs · Total: '+fmtMAD(total),
+    avoir: docs.length+' avoir(s) · A deduire des creances · Total: '+fmtMAD(total),
+    bon_livraison: docs.length+' BL · Livraisons · Total HT: '+fmtMAD(total),
+    proforma: docs.length+' proforma · Sans valeur comptable · Total: '+fmtMAD(total)
+  };
   var html = '<div class="page-header"><div><div class="page-title">'+icon+' '+label+'</div>';
-  html += '<div class="page-sub">Total valide: '+fmtMAD(total)+' · Numerotation auto CGI Art.145</div></div>';
-  html += '<button class="btn btn-blue" onclick="docForm(0,\''+type+'\')">+ Nouveau</button></div>';
+  html += '<div class="page-sub">'+(subInfo[type]||docs.length+' document(s) · Numerotation auto CGI Art.145 · Total valide: '+fmtMAD(total))+'</div></div>';
+  var btns = '<button class="btn btn-blue" onclick="docForm(0,''+type+'')">+ '+btnLabel+'</button>';
+  if (isAvoir) btns += ' <button class="btn btn-ghost" onclick="avoirDepuisFacture()">&#8617; Depuis facture</button>';
+  html += '<div style="display:flex;gap:8px">'+btns+'</div></div>';
   html += '<div class="card"><div class="table-wrap"><table>';
-  html += '<thead><tr><th>N°</th><th>Date</th><th>Client</th><th>HT</th><th>TVA</th><th>TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  html += '<thead><tr><th>N&deg;</th><th>Date</th><th>'+colTiers+'</th><th>HT</th><th>TVA</th><th>TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
   if (docs.length === 0) {
-    html += '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucun document</td></tr>';
+    html += '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucun document &mdash; Cliquez &quot;+ '+btnLabel+'&quot; pour commencer</td></tr>';
   } else {
     docs.forEach(function(d) {
       html += '<tr>'+
         '<td style="font-weight:800;color:#1a5fb4;font-family:monospace;font-size:12px">'+d.numero+'</td>'+
         '<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'+
-        '<td style="font-weight:600">'+(d.tiers_nom||'-')+'</td>'+
+        '<td><div style="font-weight:600">'+(d.tiers_nom||'&mdash;')+'</div>'+
+        (d.tiers_ice?'<div style="font-size:10px;color:#64748b;font-family:monospace">ICE: '+d.tiers_ice+'</div>':'')+
+        '</td>'+
         '<td style="font-size:12px">'+fmtMAD(d.total_ht)+'</td>'+
         '<td style="font-size:12px;color:#f59e0b">'+fmtMAD(d.total_tva)+'</td>'+
-        '<td style="font-weight:800;color:#1a5fb4">'+fmtMAD(d.total_ttc)+'</td>'+
+        '<td style="font-weight:800;color:'+(isAvoir?'#ef4444':'#1a5fb4')+'">'+(isAvoir?'- ':'')+fmtMAD(d.total_ttc)+'</td>'+
         '<td>'+badge(d.statut)+'</td>'+
-        '<td><div style="display:flex;gap:4px">'+
+        '<td><div style="display:flex;gap:3px;flex-wrap:wrap">'+
         (d.statut!=='valide'?'<button class="btn btn-blue btn-sm" onclick="validerDoc('+d.id+')">Valider</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="delItem(\'documents\','+d.id+',\'ce document\')">Suppr</button>'+
+        (type==='bon_livraison'&&d.statut==='valide'?'<button class="btn btn-success btn-sm" onclick="blToFacture('+d.id+')">&rarr; Facture</button>':'')+
+        (type==='devis'?'<button class="btn btn-success btn-sm" onclick="devisToFacture('+d.id+')">&rarr; Facture</button>':'')+
+        '<button class="btn btn-ghost btn-sm" onclick="printDoc('+d.id+')">&#128424;</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delItem('documents','+d.id+','ce document')">&#10005;</button>'+
         '</div></td></tr>';
     });
   }
@@ -672,123 +704,79 @@ function renderDocs(type, label, icon) {
   el.innerHTML = html;
 }
 
-function docForm(id, type) {
-  ligneCount = 0;
-  var clients = state.tiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
-  var today = new Date().toISOString().split('T')[0];
-  var clientOpts = '<option value="">-- Choisir client --</option>';
-  clients.forEach(function(t){ clientOpts += '<option value="'+t.id+'">'+t.raison_sociale+'</option>'; });
-  var statOpts = ['brouillon','envoye','valide'].map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('');
-  var ligne0 = makeLigneHTML(0, {});
-  ligneCount = 1;
-  openModal('Nouveau '+(type==='facture'?'facture':'devis'),
-    '<div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1a5fb4">Numerotation auto CGI Art.145 · ICE obligatoire TVA</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>Client</label><select id="d_tiers">'+clientOpts+'</select></div>'+
-    '<div class="form-field"><label>Date</label><input type="date" id="d_date" value="'+today+'"></div>'+
-    '<div class="form-field"><label>Echeance</label><input type="date" id="d_ech"></div>'+
-    '<div class="form-field"><label>Paiement</label><select id="d_pay"><option>virement</option><option>cheque</option><option>especes</option><option>carte</option></select></div>'+
-    '<div class="form-field"><label>Statut</label><select id="d_stat">'+statOpts+'</select></div>'+
-    '</div>'+
-    '<div style="font-size:13px;font-weight:700;margin:14px 0 8px">Lignes</div>'+
-    '<div id="lignesContainer">'+ligne0+'</div>'+
-    '<button onclick="addLigne()" style="background:transparent;border:1px dashed #0f1e35;color:#1a5fb4;padding:8px;border-radius:8px;cursor:pointer;width:100%;margin-top:6px">+ Ligne</button>'+
-    '<div style="margin-top:12px;padding:12px;background:#1a5fb410;border-radius:10px;text-align:right">'+
-    '<span style="font-size:13px">HT: <strong id="prev_ht">0 MAD</strong> · TVA: <strong id="prev_tva">0 MAD</strong></span><br>'+
-    '<span style="font-size:18px;font-weight:800;color:#1a5fb4">TTC: <strong id="prev_ttc">0 MAD</strong></span>'+
-    '</div>'+
-    '<div class="form-field" style="margin-top:10px"><label>Notes</label><textarea id="d_notes"></textarea></div>',
-    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
-    '<button class="btn btn-blue" onclick="saveDoc(0,\''+type+'\')">Creer</button>'
+async function blToFacture(blId) {
+  var bl = null;
+  try { bl = await api('GET','/api/documents/'+blId); } catch(e) { return; }
+  confirm2('Creer facture depuis BL',
+    'Generer une facture a partir du bon de livraison '+bl.numero+' ?',
+    async function() {
+      try {
+        var d = {type:'facture',date_doc:new Date().toISOString().split('T')[0],
+          tiers_id:bl.tiers_id,tiers_nom:bl.tiers_nom,tiers_ice:bl.tiers_ice,
+          tiers_if:bl.tiers_if,tiers_adresse:bl.tiers_adresse,tiers_ville:bl.tiers_ville,
+          ref_externe:bl.numero,statut:'brouillon',mode_paiement:bl.mode_paiement,
+          notes:'Facture sur '+bl.numero,lignes:(bl.lignes||[]).map(function(l){return {designation:l.designation,quantite:l.quantite,prix_unit_ht:l.prix_unit_ht,taux_tva:l.taux_tva,taux_remise:l.taux_remise,unite:l.unite};})};
+        await api('POST','/api/documents',d);
+        await loadAll(); showPage('facturation'); toast('Facture creee depuis '+bl.numero,'success');
+      } catch(e) { toast(e.error||'Erreur','error'); }
+    }
   );
 }
 
-function makeLigneHTML(i, l) {
-  var arts = state.articles || [];
-  var artOpts = '<option value="">Saisie libre</option>';
-  arts.forEach(function(a){ artOpts += '<option value="'+a.id+'" data-prix="'+a.prix_vente_ht+'" data-tva="'+a.taux_tva+'">'+a.designation+'</option>'; });
-  var tvaOpts = [0,7,10,14,20].map(function(v){return '<option value="'+v+'"'+((l.taux_tva||20)==v?' selected':'')+'>'+v+'%</option>';}).join('');
-  return '<div id="ligne_'+i+'" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:end">'+
-    '<div><select onchange="fillArt(this,'+i+')" style="width:100%;padding:7px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9;margin-bottom:4px">'+artOpts+'</select>'+
-    '<input id="des_'+i+'" value="'+(l.designation||'')+'" placeholder="Designation..." style="width:100%;padding:7px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()"></div>'+
-    '<input type="number" id="qty_'+i+'" value="'+(l.quantite||1)+'" style="width:100%;padding:7px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()">'+
-    '<input type="number" id="pu_'+i+'" value="'+(l.prix_unit_ht||0)+'" step="0.01" style="width:100%;padding:7px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" oninput="updateTotaux()">'+
-    '<select id="tva_'+i+'" style="width:100%;padding:7px;background:#06111e;border:1px solid #0f1e35;border-radius:8px;color:#f1f5f9" onchange="updateTotaux()">'+tvaOpts+'</select>'+
-    '<button onclick="document.getElementById(\'ligne_'+i+'\').remove();updateTotaux()" style="background:#ef444420;border:1px solid #ef444440;color:#ef4444;border-radius:8px;padding:7px 10px;cursor:pointer">✕</button>'+
-    '</div>';
+async function devisToFacture(devisId) {
+  var devis = null;
+  try { devis = await api('GET','/api/documents/'+devisId); } catch(e) { return; }
+  confirm2('Convertir devis en facture',
+    'Convertir le devis '+devis.numero+' en facture ?',
+    async function() {
+      try {
+        var d = {type:'facture',date_doc:new Date().toISOString().split('T')[0],
+          tiers_id:devis.tiers_id,tiers_nom:devis.tiers_nom,tiers_ice:devis.tiers_ice,
+          tiers_if:devis.tiers_if,tiers_adresse:devis.tiers_adresse,tiers_ville:devis.tiers_ville,
+          ref_externe:devis.numero,statut:'brouillon',mode_paiement:devis.mode_paiement,
+          notes:'Facture sur devis '+devis.numero,lignes:(devis.lignes||[]).map(function(l){return {designation:l.designation,quantite:l.quantite,prix_unit_ht:l.prix_unit_ht,taux_tva:l.taux_tva,taux_remise:l.taux_remise,unite:l.unite};})};
+        await api('POST','/api/documents',d);
+        await loadAll(); showPage('facturation'); toast('Facture creee depuis '+devis.numero,'success');
+      } catch(e) { toast(e.error||'Erreur','error'); }
+    }
+  );
 }
 
-function fillArt(sel, i) {
-  var opt = sel.options[sel.selectedIndex];
-  if (!opt.value) return;
-  document.getElementById('des_'+i).value = opt.text;
-  document.getElementById('pu_'+i).value = opt.getAttribute('data-prix')||0;
-  document.getElementById('tva_'+i).value = opt.getAttribute('data-tva')||20;
-  updateTotaux();
+function avoirDepuisFacture() {
+  var facts = state.documents.filter(function(d){return d.type==='facture'&&d.statut==='valide';});
+  if (!facts.length) return toast('Aucune facture validee trouvee','error');
+  var opts = facts.map(function(f){return '<option value="'+f.id+'">'+f.numero+' &mdash; '+(f.tiers_nom||'?')+' &mdash; '+fmtMAD(f.total_ttc)+'</option>';}).join('');
+  openModal('Creer un avoir depuis une facture',
+    '<div style="padding:8px;background:#ef444415;border:1px solid #ef444430;border-radius:8px;margin-bottom:12px;font-size:11px;color:#ef4444">Un avoir annule ou diminue une facture precedente</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Facture source</label><select id="av_fact">'+opts+'</select></div>'+
+    '<div class="form-field full"><label>Motif de l'avoir</label><input id="av_motif" placeholder="Retour marchandise, erreur de facturation, remise accordee..."></div>'+
+    '<div class="form-field full"><label>Type d'avoir</label><select id="av_type"><option value="total">Avoir total (annulation complete)</option><option value="partiel">Avoir partiel (a saisir manuellement)</option></select></div>'+
+    '</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="creerAvoir()">Creer l'avoir</button>'
+  );
 }
 
-function addLigne() {
-  var i = ligneCount++;
-  var div = document.createElement('div');
-  div.innerHTML = makeLigneHTML(i, {});
-  document.getElementById('lignesContainer').appendChild(div.firstChild);
-}
-
-function updateTotaux() {
-  var ht=0, tva=0;
-  for (var i=0; i<ligneCount+20; i++) {
-    var el = document.getElementById('ligne_'+i);
-    if (!el) continue;
-    var qty = +document.getElementById('qty_'+i).value||0;
-    var pu = +document.getElementById('pu_'+i).value||0;
-    var tv = +document.getElementById('tva_'+i).value||20;
-    var h = r2(qty*pu); ht+=h; tva+=r2(h*tv/100);
-  }
-  ht=r2(ht); tva=r2(tva);
-  var ph=document.getElementById('prev_ht');
-  var pt=document.getElementById('prev_tva');
-  var pc=document.getElementById('prev_ttc');
-  if(ph) ph.textContent=fmtMAD(ht);
-  if(pt) pt.textContent=fmtMAD(tva);
-  if(pc) pc.textContent=fmtMAD(r2(ht+tva));
-}
-
-async function saveDoc(id, type) {
-  var tiersId = document.getElementById('d_tiers').value;
-  var tiers = tiersId ? state.tiers.find(function(t){return t.id==tiersId;}) : null;
-  var lignes = [];
-  for (var i=0; i<ligneCount+20; i++) {
-    var el = document.getElementById('ligne_'+i);
-    if (!el) continue;
-    var des = document.getElementById('des_'+i).value;
-    if (!des) continue;
-    lignes.push({
-      designation: des,
-      quantite: +document.getElementById('qty_'+i).value||1,
-      prix_unit_ht: +document.getElementById('pu_'+i).value||0,
-      taux_tva: +document.getElementById('tva_'+i).value||20,
-      taux_remise: 0, unite: 'U'
-    });
-  }
-  if (lignes.length===0) return toast('Au moins une ligne requise','error');
-  var d = {
-    type: type,
-    date_doc: document.getElementById('d_date').value,
-    date_echeance: document.getElementById('d_ech').value||null,
-    tiers_id: tiersId||null,
-    tiers_nom: tiers?tiers.raison_sociale:'',
-    tiers_ice: tiers?tiers.ice:'',
-    tiers_if: tiers?tiers.if_fiscal:'',
-    tiers_adresse: tiers?tiers.adresse:'',
-    tiers_ville: tiers?tiers.ville:'',
-    statut: document.getElementById('d_stat').value,
-    mode_paiement: document.getElementById('d_pay').value,
-    notes: document.getElementById('d_notes').value,
-    lignes: lignes
-  };
+async function creerAvoir() {
+  var factId = document.getElementById('av_fact').value;
+  var motif = document.getElementById('av_motif').value || 'Avoir';
+  var avType = document.getElementById('av_type').value;
   try {
+    var fact = await api('GET','/api/documents/'+factId);
+    var lignesAvoir = (fact.lignes||[]).map(function(l){
+      return {designation:'Avoir - '+l.designation,quantite:l.quantite,
+              prix_unit_ht:l.prix_unit_ht,taux_tva:l.taux_tva,taux_remise:l.taux_remise,unite:l.unite||'U'};
+    });
+    var d = {type:'avoir',date_doc:new Date().toISOString().split('T')[0],
+      tiers_id:fact.tiers_id,tiers_nom:fact.tiers_nom,tiers_ice:fact.tiers_ice,
+      tiers_if:fact.tiers_if,tiers_adresse:fact.tiers_adresse,tiers_ville:fact.tiers_ville,
+      ref_externe:fact.numero,statut:'brouillon',mode_paiement:fact.mode_paiement,
+      notes:motif+' sur facture '+fact.numero,
+      lignes: avType==='total' ? lignesAvoir : [{designation:'Avoir partiel - '+motif,quantite:1,prix_unit_ht:0,taux_tva:20,taux_remise:0,unite:'U'}]};
     await api('POST','/api/documents',d);
-    closeModal(); await loadAll(); renderPage(currentPage); toast('Document cree','success');
+    closeModal(); await loadAll(); showPage('avoir');
+    toast('Avoir cree sur '+fact.numero,'success');
   } catch(e) { toast(e.error||'Erreur','error'); }
 }
 
@@ -799,93 +787,7 @@ async function validerDoc(id) {
   } catch(e) { toast(e.error||'Erreur','error'); }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EMPLOYES
-// ═══════════════════════════════════════════════════════════════
-function renderEmployes() {
-  var el = document.getElementById('page-employes');
-  var emps = state.employes || [];
-  var smig = LEGAL.SMIG || 3422;
-  var html = '<div class="page-header"><div><div class="page-title">👤 Employes</div>';
-  html += '<div class="page-sub">'+emps.length+' employe(s) · SMIG 2026: '+smig+' MAD</div></div>';
-  html += '<button class="btn btn-blue" onclick="empForm(0)">+ Ajouter</button></div>';
-  html += '<div class="card"><div class="table-wrap"><table>';
-  html += '<thead><tr><th>Matricule</th><th>Nom</th><th>Poste</th><th>Contrat</th><th>Salaire</th><th>Actions</th></tr></thead><tbody>';
-  if (emps.length === 0) {
-    html += '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucun employe</td></tr>';
-  } else {
-    emps.forEach(function(e) {
-      html += '<tr>'+
-        '<td style="font-family:monospace;font-size:12px;color:#1a5fb4">'+e.matricule+'</td>'+
-        '<td><div style="font-weight:700">'+e.prenom+' '+e.nom+'</div><div style="font-size:11px;color:#64748b">'+(e.departement||'')+'</div></td>'+
-        '<td style="font-size:12px">'+(e.poste||'-')+'</td>'+
-        '<td><span style="padding:2px 8px;border-radius:20px;background:#1a5fb415;color:#1a5fb4;font-size:11px">'+e.type_contrat+'</span></td>'+
-        '<td style="font-weight:700">'+fmtMAD(e.salaire_base)+'</td>'+
-        '<td><div style="display:flex;gap:4px">'+
-        '<button class="btn btn-ghost btn-sm" onclick="empForm('+e.id+')">Modifier</button>'+
-        '<button class="btn btn-success btn-sm" onclick="genBulletin('+e.id+')">Bulletin</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="delItem(\'employes\','+e.id+',\'cet employe\')">Suppr</button>'+
-        '</div></td></tr>';
-    });
-  }
-  html += '</tbody></table></div></div>';
-  el.innerHTML = html;
-}
 
-function empForm(id) {
-  var e = id ? (state.employes.find(function(x){return x.id==id;}) || {}) : {};
-  var smig = LEGAL.SMIG || 3422;
-  var contrats = ['CDI','CDD','ANAPEC','Stage','Interim'].map(function(c){return '<option value="'+c+'"'+(e.type_contrat===c?' selected':'')+'>'+c+'</option>';}).join('');
-  var sitfam = ['celibataire','marie','divorce','veuf'].map(function(s){
-    var labels = {celibataire:'Celibataire',marie:'Marie(e)',divorce:'Divorce(e)',veuf:'Veuf/Veuve'};
-    return '<option value="'+s+'"'+(e.situation_familiale===s?' selected':'')+'>'+labels[s]+'</option>';
-  }).join('');
-  openModal(id?'Modifier employe':'Nouvel employe — Dossier complet',
-    '<div style="padding:8px;background:#22c55e15;border-radius:8px;margin-bottom:12px;font-size:11px;color:#22c55e">✓ SMIG 2026: '+smig+' MAD/mois · Art.356 Code travail · LF 2026</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin-bottom:8px;padding:4px 0;border-bottom:1px solid #0f1e35">Identite & CIN</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>Prenom *</label><input id="e_prenom" value="'+(e.prenom||'')+'" placeholder="Mohammed"></div>'+
-    '<div class="form-field"><label>Nom *</label><input id="e_nom" value="'+(e.nom||'')+'" placeholder="ALAMI"></div>'+
-    '<div class="form-field"><label>CIN *</label><input id="e_cin" value="'+(e.cin||'')+'" placeholder="AB123456"></div>'+
-    '<div class="form-field"><label>Date naissance</label><input type="date" id="e_naiss" value="'+(e.date_naissance||'')+'"></div>'+
-    '<div class="form-field"><label>Nationalite</label><input id="e_nation" value="'+(e.nationalite||'Marocaine')+'"></div>'+
-    '<div class="form-field"><label>Situation familiale</label><select id="e_sitfam">'+sitfam+'</select></div>'+
-    '</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin:12px 0 8px;padding:4px 0;border-bottom:1px solid #0f1e35">Affiliation sociale</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>N° CNSS *</label><input id="e_cnss" value="'+(e.cnss_num||'')+'" placeholder="137379775"></div>'+
-    '<div class="form-field"><label>CIMR (optionnel)</label><input id="e_cimr" value="'+(e.cimr||'')+'" placeholder="N° CIMR"></div>'+
-    '<div class="form-field"><label>Nb enfants a charge (max 6)</label><input type="number" id="e_enf" value="'+(e.nb_enfants||0)+'" min="0" max="6"></div>'+
-    '<div class="form-field"><label>Conjoint(e) a charge</label><select id="e_conj"><option value="0"'+(!e.conjoint?' selected':'')+'>Non</option><option value="1"'+(e.conjoint?' selected':'')+'>Oui (+50 MAD/mois IR)</option></select></div>'+
-    '</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin:12px 0 8px;padding:4px 0;border-bottom:1px solid #0f1e35">Contrat & Poste</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>Date embauche *</label><input type="date" id="e_emb" value="'+(e.date_embauche||new Date().toISOString().split('T')[0])+'"></div>'+
-    '<div class="form-field"><label>Type contrat</label><select id="e_contrat">'+contrats+'</select></div>'+
-    '<div class="form-field"><label>Poste / Fonction</label><input id="e_poste" value="'+(e.poste||'')+'" placeholder="Comptable, Commercial..."></div>'+
-    '<div class="form-field"><label>Departement</label><input id="e_dept" value="'+(e.departement||'')+'" placeholder="Finance, RH, Commercial..."></div>'+
-    '</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin:12px 0 8px;padding:4px 0;border-bottom:1px solid #0f1e35">Remuneration LF 2026</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>Salaire base (MAD) * — min '+smig+'</label><input type="number" id="e_sal" value="'+(e.salaire_base||smig)+'" min="'+smig+'" step="100"></div>'+
-    '<div class="form-field"><label>Indemnite transport (MAD)</label><input type="number" id="e_transp" value="'+(e.indemnite_transport||0)+'" step="0.01"></div>'+
-    '<div class="form-field"><label>Indemnite repas (MAD)</label><input type="number" id="e_repas" value="'+(e.indemnite_repas||0)+'" step="0.01"></div>'+
-    '<div class="form-field"><label>CIMR taux (%)</label><input type="number" id="e_cimr_taux" value="'+(e.cimr_taux||0)+'" min="0" max="6" step="0.5"></div>'+
-    '</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin:12px 0 8px;padding:4px 0;border-bottom:1px solid #0f1e35">Coordonnees bancaires</div>'+
-    '<div class="form-grid">'+
-    '<div class="form-field"><label>Mode versement salaire</label><select id="e_pay"><option value="virement"'+(e.mode_paiement==='virement'?' selected':'')+'>Virement bancaire</option><option value="especes"'+(e.mode_paiement==='especes'?' selected':'')+'>Especes</option><option value="cheque"'+(e.mode_paiement==='cheque'?' selected':'')+'>Cheque</option></select></div>'+
-    '<div class="form-field"><label>Banque</label><select id="e_banque">'+
-    ['','Attijariwafa Bank','CIH Bank','Banque Populaire','BMCE Bank','BMCI','Societe Generale','Credit Agricole','CDM','Al Barid Bank','CFG Bank'].map(function(b){return '<option value="'+b+'"'+((e.banque||'')===b?' selected':'')+'>'+b+'</option>';}).join('')+
-    '</select></div>'+
-    '<div class="form-field full"><label>RIB (24 chiffres)</label><input id="e_rib" value="'+(e.rib||'')+'" placeholder="230 780 6858 0000 0000 0005 7" maxlength="30"></div>'+
-    '</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin:12px 0 8px;padding:4px 0;border-bottom:1px solid #0f1e35">Notes</div>'+
-    '<div class="form-field"><textarea id="e_notes" rows="2" placeholder="Observations...">'+(e.notes||'')+'</textarea></div>',
-    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
-    '<button class="btn btn-blue" onclick="saveEmp('+id+')">'+( id?'Enregistrer':'Ajouter employe')+'</button>'
-  );
-}
 
 async function saveEmp(id) {
   var d = {
@@ -1840,7 +1742,7 @@ async function printDoc(id) {
   '<table class="tot">'+
   '<tr><td>Total HT</td><td style="text-align:right;font-weight:700">'+r2(doc.total_ht).toLocaleString('fr-MA')+' MAD</td></tr>'+
   '<tr><td>Total TVA</td><td style="text-align:right;font-weight:700">'+r2(doc.total_tva).toLocaleString('fr-MA')+' MAD</td></tr>'+
-  '<tr class="ttc-row"><td>TOTAL TTC</td><td style="text-align:right">'+r2(ttc).toLocaleString('fr-MA')+' MAD</td></tr>'+
+  '<tr class="ttc-row"><td>'+(doc.type==="avoir"?'MONTANT AVOIR':'TOTAL TTC')+'</td><td style="text-align:right">'+(doc.type==="avoir"?'- ':'')+r2(ttc).toLocaleString('fr-MA')+' MAD</td></tr>'+
   '</table></div></div>'+
   // MONTANT EN LETTRES
   '<div class="lettres"><strong>Arr&ecirc;t&eacute;e &agrave; la somme de :</strong> '+montantLettres+'</div>'+
