@@ -20,6 +20,20 @@ const db = new Database(path.join(DATA_DIR, 'pmegest.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+
+// Add new columns if they don't exist (migration)
+try { db.exec("ALTER TABLE employes ADD COLUMN indemnite_transport REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE employes ADD COLUMN indemnite_repas REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE employes ADD COLUMN nationalite TEXT DEFAULT 'Marocaine'"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_logo TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_cachet TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_cnss TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_rib TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_banque TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_capital TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN company_forme_juridique TEXT DEFAULT ''"); } catch(e) {}
+
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -466,15 +480,15 @@ app.post('/api/employes',auth,(req,res)=>{
   if(d.salaire_base<L.SMIG)return res.status(400).json({error:'Salaire inferieur au SMIG 2026 ('+L.SMIG+' MAD)'});
   const count=db.prepare('SELECT COUNT(*) as c FROM employes WHERE account_id=?').get(req.account.id).c;
   const mat=d.matricule||('EMP-'+String(count+1).padStart(4,'0'));
-  const r=db.prepare('INSERT INTO employes (account_id,matricule,nom,prenom,cin,cnss_num,cimr_num,date_naissance,lieu_naissance,date_embauche,type_contrat,poste,departement,niveau,salaire_base,nb_enfants,conjoint,situation_familiale,rib,banque,mode_paiement,adresse,ville,tel,email,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(req.account.id,mat,d.nom,d.prenom,d.cin||'',d.cnss_num||'',d.cimr_num||'',d.date_naissance||'',d.lieu_naissance||'',d.date_embauche,d.type_contrat||'CDI',d.poste||'',d.departement||'',d.niveau||'',d.salaire_base,d.nb_enfants||0,d.conjoint?1:0,d.situation_familiale||'celibataire',d.rib||'',d.banque||'',d.mode_paiement||'virement',d.adresse||'',d.ville||'',d.tel||'',d.email||'',d.notes||'');
+  const r=db.prepare('INSERT INTO employes (account_id,matricule,nom,prenom,cin,cnss_num,date_naissance,date_embauche,type_contrat,poste,departement,salaire_base,nb_enfants,conjoint,situation_familiale,rib,banque,mode_paiement,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(req.account.id,mat,d.nom,d.prenom,d.cin||'',d.cnss_num||'',d.date_naissance||'',d.date_embauche,d.type_contrat||'CDI',d.poste||'',d.departement||'',d.salaire_base||0,d.nb_enfants||0,d.conjoint?1:0,d.situation_familiale||'celibataire',d.rib||'',d.banque||'',d.mode_paiement||'virement',d.notes||'');
   res.json({success:true,id:r.lastInsertRowid,matricule:mat});
 });
 app.put('/api/employes/:id',auth,(req,res)=>{
   const d=req.body;
   if(d.salaire_base&&d.salaire_base<L.SMIG)return res.status(400).json({error:'Salaire inferieur au SMIG 2026 ('+L.SMIG+' MAD)'});
-  db.prepare('UPDATE employes SET nom=?,prenom=?,cin=?,cnss_num=?,cimr_num=?,date_naissance=?,lieu_naissance=?,date_embauche=?,type_contrat=?,poste=?,departement=?,niveau=?,salaire_base=?,nb_enfants=?,conjoint=?,situation_familiale=?,rib=?,banque=?,mode_paiement=?,adresse=?,ville=?,tel=?,email=?,statut=?,notes=? WHERE id=? AND account_id=?')
-    .run(d.nom,d.prenom,d.cin||'',d.cnss_num||'',d.cimr_num||'',d.date_naissance||'',d.lieu_naissance||'',d.date_embauche,d.type_contrat||'CDI',d.poste||'',d.departement||'',d.niveau||'',d.salaire_base,d.nb_enfants||0,d.conjoint?1:0,d.situation_familiale||'celibataire',d.rib||'',d.banque||'',d.mode_paiement||'virement',d.adresse||'',d.ville||'',d.tel||'',d.email||'',d.statut||'actif',d.notes||'',req.params.id,req.account.id);
+  db.prepare('UPDATE employes SET nom=?,prenom=?,cin=?,cnss_num=?,date_naissance=?,date_embauche=?,type_contrat=?,poste=?,departement=?,salaire_base=?,nb_enfants=?,conjoint=?,situation_familiale=?,rib=?,banque=?,mode_paiement=?,statut=?,notes=? WHERE id=? AND account_id=?')
+    .run(d.nom,d.prenom,d.cin||'',d.cnss_num||'',d.date_naissance||'',d.date_embauche||'',d.type_contrat||'CDI',d.poste||'',d.departement||'',d.salaire_base||0,d.nb_enfants||0,d.conjoint?1:0,d.situation_familiale||'celibataire',d.rib||'',d.banque||'',d.mode_paiement||'virement',d.statut||'actif',d.notes||'',req.params.id,req.account.id);
   res.json({success:true});
 });
 app.delete('/api/employes/:id',auth,(req,res)=>{db.prepare("UPDATE employes SET statut='archive' WHERE id=? AND account_id=?").run(req.params.id,req.account.id);res.json({success:true});});
