@@ -672,7 +672,7 @@ function renderDocs(type, label, icon) {
   };
   var html = '<div class="page-header"><div><div class="page-title">'+icon+' '+label+'</div>';
   html += '<div class="page-sub">'+(subInfo[type]||docs.length+' document(s) · Numerotation auto CGI Art.145 · Total valide: '+fmtMAD(total))+'</div></div>';
-  var btns = '<button class="btn btn-blue" onclick="docForm(0,''+type+'')">+ '+btnLabel+'</button>';
+  window._currentDocType = type; var btns = '<button class="btn btn-blue" onclick="docForm(0,window._currentDocType)">'+'+ '+btnLabel+'</button>';
   if (isAvoir) btns += ' <button class="btn btn-ghost" onclick="avoirDepuisFacture()">&#8617; Depuis facture</button>';
   html += '<div style="display:flex;gap:8px">'+btns+'</div></div>';
   html += '<div class="card"><div class="table-wrap"><table>';
