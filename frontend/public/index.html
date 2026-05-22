@@ -182,7 +182,7 @@ tr:hover td{background:#ffffff04}
     <div class="modal-hdr"><h3 id="confTitle">Confirmer</h3></div>
     <div class="modal-body"><p id="confMsg" style="color:#64748b;font-size:14px;line-height:1.6"></p></div>
     <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="document.getElementById('confirmModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-ghost" onclick="document.getElementById("confirmModal").classList.remove('open')">Annuler</button>
       <button class="btn btn-danger" id="confBtn">Confirmer</button>
     </div>
   </div>
@@ -192,7 +192,7 @@ tr:hover td{background:#ffffff04}
   <div class="modal" style="max-width:500px">
     <div class="modal-hdr">
       <div><h3>Essai gratuit 48h</h3><p style="font-size:12px;color:#64748b;margin-top:4px">Sans engagement · Conforme CGI 2026</p></div>
-      <button onclick="document.getElementById('trialModal').classList.remove('open')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">✕</button>
+      <button onclick="document.getElementById("trialModal").classList.remove('open')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
@@ -213,7 +213,7 @@ tr:hover td{background:#ffffff04}
       </div>
     </div>
     <div class="modal-foot" id="trialFoot">
-      <button class="btn btn-ghost" onclick="document.getElementById('trialModal').classList.remove('open')">Annuler</button>
+      <button class="btn btn-ghost" onclick="document.getElementById("trialModal").classList.remove('open')">Annuler</button>
       <button class="btn btn-blue" id="trialBtn" onclick="submitTrial()">Envoyer</button>
     </div>
   </div>
@@ -256,27 +256,27 @@ function toast(msg, type) {
   t.className = 'toast t-'+type;
   t.textContent = msg;
   t.onclick = function(){ t.remove(); };
-  document.getElementById('toastCont').appendChild(t);
+  document.getElementById("toastCont").appendChild(t);
   setTimeout(function(){ t.remove(); }, 4000);
 }
 
 function confirm2(title, msg, cb) {
-  document.getElementById('confTitle').textContent = title;
-  document.getElementById('confMsg').textContent = msg;
-  document.getElementById('confirmModal').classList.add('open');
-  document.getElementById('confBtn').onclick = function() {
+  document.getElementById("confTitle").textContent = title;
+  document.getElementById("confMsg").textContent = msg;
+  document.getElementById("confirmModal").classList.add('open');
+  document.getElementById("confBtn").onclick = function() {
     cb();
-    document.getElementById('confirmModal').classList.remove('open');
+    document.getElementById("confirmModal").classList.remove('open');
   };
 }
 
 function openModal(title, body, foot) {
-  document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalBody').innerHTML = body;
-  document.getElementById('modalFoot').innerHTML = foot;
-  document.getElementById('mainModal').classList.add('open');
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").innerHTML = body;
+  document.getElementById("modalFoot").innerHTML = foot;
+  document.getElementById("mainModal").classList.add('open');
 }
-function closeModal() { document.getElementById('mainModal').classList.remove('open'); }
+function closeModal() { document.getElementById("mainModal").classList.remove('open'); }
 
 // ═══════════════════════════════════════════════════════════════
 // API
@@ -295,9 +295,9 @@ async function api(method, url, body) {
 // AUTH
 // ═══════════════════════════════════════════════════════════════
 async function doLogin() {
-  var email = document.getElementById('loginEmail').value.trim();
-  var pass = document.getElementById('loginPass').value;
-  var err = document.getElementById('loginErr');
+  var email = document.getElementById("loginEmail").value.trim();
+  var pass = document.getElementById("loginPass").value;
+  var err = document.getElementById("loginErr");
   err.style.display = 'none';
   try {
     var data = await api('POST', '/api/auth/login', {email:email, password:pass});
@@ -320,19 +320,19 @@ function doLogout() {
   localStorage.removeItem('pmegest_token');
   token = null;
   currentAccount = null;
-  document.getElementById('loginPage').style.display = 'flex';
-  document.getElementById('appPage').style.display = 'none';
+  document.getElementById("loginPage").style.display = 'flex';
+  document.getElementById("appPage").style.display = 'none';
 }
 
 async function initApp() {
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('appPage').style.display = 'block';
+  document.getElementById("loginPage").style.display = 'none';
+  document.getElementById("appPage").style.display = 'block';
   var name = currentAccount.name || 'Admin';
-  document.getElementById('userAv').textContent = name.split(' ').map(function(n){return n[0]||'';}).join('').slice(0,2).toUpperCase();
-  document.getElementById('userName').textContent = name;
-  document.getElementById('userRole').textContent = currentAccount.company_name || (currentAccount.role==='super'?'Super Admin':'Client');
-  var lic = document.getElementById('licBadge');
-  var btnS = document.getElementById('btnSuper');
+  document.getElementById("userAv").textContent = name.split(' ').map(function(n){return n[0]||'';}).join('').slice(0,2).toUpperCase();
+  document.getElementById("userName").textContent = name;
+  document.getElementById("userRole").textContent = currentAccount.company_name || (currentAccount.role==='super'?'Super Admin':'Client');
+  var lic = document.getElementById("licBadge");
+  var btnS = document.getElementById("btnSuper");
   if (currentAccount.role === 'super') {
     lic.textContent = 'Super Admin';
     lic.style.cssText = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b30';
@@ -377,7 +377,7 @@ function buildSidebar() {
     if (it.badge) html += '<span class="nav-badge hidden" id="alertBadge">0</span>';
     html += '</button>';
   });
-  document.getElementById('sidebarNav').innerHTML = html;
+  document.getElementById("sidebarNav").innerHTML = html;
 }
 
 async function loadAll() {
@@ -386,7 +386,7 @@ async function loadAll() {
     var results = await Promise.all(eps.map(function(e){ return api('GET','/api/'+e); }));
     eps.forEach(function(e,i){ state[e] = results[i]; });
     var unread = state.alertes.filter(function(a){return !a.lu;}).length;
-    var ab = document.getElementById('alertBadge');
+    var ab = document.getElementById("alertBadge");
     if (ab) { ab.textContent = unread; ab.classList.toggle('hidden', unread===0); }
   } catch(e) { console.error('loadAll error:', e); }
 }
@@ -446,7 +446,7 @@ function delItem(resource, id, label) {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 async function renderDashboard() {
-  var el = document.getElementById('page-dashboard');
+  var el = document.getElementById("page-dashboard");
   var stats = {};
   try { stats = await api('GET', '/api/dashboard'); } catch(e) {}
   var smig = (LEGAL.SMIG || 3422);
@@ -556,15 +556,15 @@ function tiersForm(id, defaultType) {
 
 async function saveTiers(id) {
   var d = {
-    type: document.getElementById('t_type').value,
-    raison_sociale: document.getElementById('t_rs').value,
-    ice: document.getElementById('t_ice').value,
-    if_fiscal: document.getElementById('t_if').value,
-    rc: document.getElementById('t_rc').value,
-    tel: document.getElementById('t_tel').value,
-    email: document.getElementById('t_email').value,
-    ville: document.getElementById('t_ville').value,
-    adresse: document.getElementById('t_adr').value
+    type: document.getElementById("t_type").value,
+    raison_sociale: document.getElementById("t_rs").value,
+    ice: document.getElementById("t_ice").value,
+    if_fiscal: document.getElementById("t_if").value,
+    rc: document.getElementById("t_rc").value,
+    tel: document.getElementById("t_tel").value,
+    email: document.getElementById("t_email").value,
+    ville: document.getElementById("t_ville").value,
+    adresse: document.getElementById("t_adr").value
   };
   if (!d.raison_sociale) return toast('Raison sociale requise','error');
   try {
@@ -578,7 +578,7 @@ async function saveTiers(id) {
 // ARTICLES
 // ═══════════════════════════════════════════════════════════════
 function renderArticles() {
-  var el = document.getElementById('page-articles');
+  var el = document.getElementById("page-articles");
   var arts = state.articles || [];
   var alerte = arts.filter(function(a){return a.stock_actuel<=a.stock_min && a.stock_min>0;});
   var html = '<div class="page-header"><div><div class="page-title">📦 Articles & Stock</div>';
@@ -629,13 +629,13 @@ function articleForm(id) {
 
 async function saveArticle(id) {
   var d = {
-    code: document.getElementById('a_code').value,
-    designation: document.getElementById('a_des').value,
-    type: document.getElementById('a_type').value,
-    prix_vente_ht: +document.getElementById('a_pv').value,
-    taux_tva: +document.getElementById('a_tva').value,
-    stock_actuel: +document.getElementById('a_stock').value,
-    stock_min: +document.getElementById('a_smin').value,
+    code: document.getElementById("a_code").value,
+    designation: document.getElementById("a_des").value,
+    type: document.getElementById("a_type").value,
+    prix_vente_ht: +document.getElementById("a_pv").value,
+    taux_tva: +document.getElementById("a_tva").value,
+    stock_actuel: +document.getElementById("a_stock").value,
+    stock_min: +document.getElementById("a_smin").value,
     unite: 'U', prix_achat: 0
   };
   if (!d.code||!d.designation) return toast('Code et designation requis','error');
@@ -739,7 +739,7 @@ function addLigne() {
   var i = ligneCount++;
   var div = document.createElement('div');
   div.innerHTML = makeLigneHTML(i, {});
-  document.getElementById('lignesContainer').appendChild(div.firstChild);
+  document.getElementById("lignesContainer").appendChild(div.firstChild);
 }
 
 function updateTotaux() {
@@ -753,16 +753,16 @@ function updateTotaux() {
     var h = r2(qty*pu); ht+=h; tva+=r2(h*tv/100);
   }
   ht=r2(ht); tva=r2(tva);
-  var ph=document.getElementById('prev_ht');
-  var pt=document.getElementById('prev_tva');
-  var pc=document.getElementById('prev_ttc');
+  var ph=document.getElementById("prev_ht");
+  var pt=document.getElementById("prev_tva");
+  var pc=document.getElementById("prev_ttc");
   if(ph) ph.textContent=fmtMAD(ht);
   if(pt) pt.textContent=fmtMAD(tva);
   if(pc) pc.textContent=fmtMAD(r2(ht+tva));
 }
 
 async function saveDoc(id, type) {
-  var tiersId = document.getElementById('d_tiers').value;
+  var tiersId = document.getElementById("d_tiers").value;
   var tiers = tiersId ? state.tiers.find(function(t){return t.id==tiersId;}) : null;
   var lignes = [];
   for (var i=0; i<ligneCount+20; i++) {
@@ -781,17 +781,17 @@ async function saveDoc(id, type) {
   if (lignes.length===0) return toast('Au moins une ligne requise','error');
   var d = {
     type: type,
-    date_doc: document.getElementById('d_date').value,
-    date_echeance: document.getElementById('d_ech').value||null,
+    date_doc: document.getElementById("d_date").value,
+    date_echeance: document.getElementById("d_ech").value||null,
     tiers_id: tiersId||null,
     tiers_nom: tiers?tiers.raison_sociale:'',
     tiers_ice: tiers?tiers.ice:'',
     tiers_if: tiers?tiers.if_fiscal:'',
     tiers_adresse: tiers?tiers.adresse:'',
     tiers_ville: tiers?tiers.ville:'',
-    statut: document.getElementById('d_stat').value,
-    mode_paiement: document.getElementById('d_pay').value,
-    notes: document.getElementById('d_notes').value,
+    statut: document.getElementById("d_stat").value,
+    mode_paiement: document.getElementById("d_pay").value,
+    notes: document.getElementById("d_notes").value,
     lignes: lignes
   };
   try {
@@ -811,7 +811,7 @@ async function validerDoc(id) {
 // EMPLOYES
 // ═══════════════════════════════════════════════════════════════
 function renderEmployes() {
-  var el = document.getElementById('page-employes');
+  var el = document.getElementById("page-employes");
   var emps = state.employes || [];
   var smig = LEGAL.SMIG || 3422;
   var html = '<div class="page-header"><div><div class="page-title">👤 Employes</div>';
@@ -897,25 +897,25 @@ function empForm(id) {
 
 async function saveEmp(id) {
   var d = {
-    prenom: document.getElementById('e_prenom').value,
-    nom: document.getElementById('e_nom').value,
-    cin: document.getElementById('e_cin').value,
-    date_naissance: document.getElementById('e_naiss').value,
-    cnss_num: document.getElementById('e_cnss').value,
-    date_embauche: document.getElementById('e_emb').value,
-    type_contrat: document.getElementById('e_contrat').value,
-    poste: document.getElementById('e_poste').value,
-    departement: document.getElementById('e_dept').value,
-    salaire_base: +document.getElementById('e_sal').value,
-    indemnite_transport: +document.getElementById('e_transp').value||0,
-    indemnite_repas: +document.getElementById('e_repas').value||0,
-    nb_enfants: +document.getElementById('e_enf').value,
-    conjoint: +document.getElementById('e_conj').value,
-    situation_familiale: document.getElementById('e_sitfam').value,
-    rib: document.getElementById('e_rib').value,
-    banque: document.getElementById('e_banque').value,
-    mode_paiement: document.getElementById('e_pay').value,
-    notes: document.getElementById('e_notes').value
+    prenom: document.getElementById("e_prenom").value,
+    nom: document.getElementById("e_nom").value,
+    cin: document.getElementById("e_cin").value,
+    date_naissance: document.getElementById("e_naiss").value,
+    cnss_num: document.getElementById("e_cnss").value,
+    date_embauche: document.getElementById("e_emb").value,
+    type_contrat: document.getElementById("e_contrat").value,
+    poste: document.getElementById("e_poste").value,
+    departement: document.getElementById("e_dept").value,
+    salaire_base: +document.getElementById("e_sal").value,
+    indemnite_transport: +document.getElementById("e_transp").value||0,
+    indemnite_repas: +document.getElementById("e_repas").value||0,
+    nb_enfants: +document.getElementById("e_enf").value,
+    conjoint: +document.getElementById("e_conj").value,
+    situation_familiale: document.getElementById("e_sitfam").value,
+    rib: document.getElementById("e_rib").value,
+    banque: document.getElementById("e_banque").value,
+    mode_paiement: document.getElementById("e_pay").value,
+    notes: document.getElementById("e_notes").value
   };
   if (!d.prenom||!d.nom||!d.date_embauche) return toast('Prenom, nom et date embauche requis','error');
   try {
@@ -929,7 +929,7 @@ async function saveEmp(id) {
 // PAIE LF 2026
 // ═══════════════════════════════════════════════════════════════
 function renderPaie() {
-  var el = document.getElementById('page-paie');
+  var el = document.getElementById("page-paie");
   var buls = state.bulletins || [];
   var ML = ['','Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
   var html = '<div class="page-header"><div><div class="page-title">💼 Paie LF 2026</div>';
@@ -998,20 +998,20 @@ function genBulletin(empId) {
 }
 
 async function previewBulletin() {
-  var empId = document.getElementById('b_emp').value;
+  var empId = document.getElementById("b_emp").value;
   var emp = empId ? state.employes.find(function(e){return e.id==empId;}) : null;
-  var sal = +document.getElementById('b_sal').value || (emp ? emp.salaire_base : 0);
+  var sal = +document.getElementById("b_sal").value || (emp ? emp.salaire_base : 0);
   if (!sal) return;
   try {
     var calc = await api('POST','/api/paie/simuler',{
       salaire_base: sal,
-      heures_sup_25: +document.getElementById('b_hs25').value||0,
-      autres_primes: +document.getElementById('b_primes').value||0,
+      heures_sup_25: +document.getElementById("b_hs25").value||0,
+      autres_primes: +document.getElementById("b_primes").value||0,
       nb_enfants: emp?emp.nb_enfants:0,
       conjoint: emp?emp.conjoint:0,
       date_embauche: emp?emp.date_embauche:null
     });
-    var el = document.getElementById('bulletinPreview');
+    var el = document.getElementById("bulletinPreview");
     if (!el) return;
     el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px">'+
       '<div style="padding:12px;background:#1a5fb415;border-radius:10px;text-align:center"><div style="font-size:10px;color:#64748b">Brut</div><div style="font-size:18px;font-weight:800;color:#1a5fb4">'+fmtMAD(calc.salaire_brut)+'</div></div>'+
@@ -1023,16 +1023,16 @@ async function previewBulletin() {
 }
 
 async function saveBulletin() {
-  var empId = document.getElementById('b_emp').value;
+  var empId = document.getElementById("b_emp").value;
   if (!empId) return toast('Employe requis','error');
   var d = {
     employe_id: +empId,
-    mois: +document.getElementById('b_mois').value,
-    annee: +document.getElementById('b_annee').value,
-    heures_sup_25: +document.getElementById('b_hs25').value||0,
-    autres_primes: +document.getElementById('b_primes').value||0
+    mois: +document.getElementById("b_mois").value,
+    annee: +document.getElementById("b_annee").value,
+    heures_sup_25: +document.getElementById("b_hs25").value||0,
+    autres_primes: +document.getElementById("b_primes").value||0
   };
-  var sal = +document.getElementById('b_sal').value;
+  var sal = +document.getElementById("b_sal").value;
   if (sal) d.salaire_base = sal;
   try {
     await api('POST','/api/bulletins',d);
@@ -1063,12 +1063,12 @@ async function simulerPaie() {
 async function runSim() {
   try {
     var calc = await api('POST','/api/paie/simuler',{
-      salaire_base: +document.getElementById('sim_sal').value||0,
-      nb_enfants: +document.getElementById('sim_enf').value||0,
-      conjoint: +document.getElementById('sim_conj').value||0,
-      date_embauche: document.getElementById('sim_emb').value
+      salaire_base: +document.getElementById("sim_sal").value||0,
+      nb_enfants: +document.getElementById("sim_enf").value||0,
+      conjoint: +document.getElementById("sim_conj").value||0,
+      date_embauche: document.getElementById("sim_emb").value
     });
-    var el = document.getElementById('simRes');
+    var el = document.getElementById("simRes");
     if (!el) return;
     el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px">'+
       '<div style="padding:12px;background:#1a5fb415;border-radius:10px;text-align:center"><div style="font-size:10px;color:#64748b">Brut</div><div style="font-size:18px;font-weight:800;color:#1a5fb4">'+fmtMAD(calc.salaire_brut)+'</div></div>'+
@@ -1082,7 +1082,7 @@ async function runSim() {
 // CONGES
 // ═══════════════════════════════════════════════════════════════
 function renderConges() {
-  var el = document.getElementById('page-conges');
+  var el = document.getElementById("page-conges");
   var conges = state.conges || [];
   var html = '<div class="page-header"><div><div class="page-title">🏖 Conges</div>';
   html += '<div class="page-sub">Art.231 Code travail · 18j minimum/an</div></div>';
@@ -1128,12 +1128,12 @@ function congeForm() {
 
 async function saveConge() {
   var d = {
-    employe_id: document.getElementById('c_emp').value,
-    type: document.getElementById('c_type').value,
-    date_debut: document.getElementById('c_deb').value,
-    date_fin: document.getElementById('c_fin').value || document.getElementById('c_deb').value,
-    nb_jours: +document.getElementById('c_jours').value,
-    motif: document.getElementById('c_motif').value
+    employe_id: document.getElementById("c_emp").value,
+    type: document.getElementById("c_type").value,
+    date_debut: document.getElementById("c_deb").value,
+    date_fin: document.getElementById("c_fin").value || document.getElementById("c_deb").value,
+    nb_jours: +document.getElementById("c_jours").value,
+    motif: document.getElementById("c_motif").value
   };
   if (!d.employe_id||!d.date_debut) return toast('Employe et date requis','error');
   try {
@@ -1153,7 +1153,7 @@ async function updateConge(id, statut) {
 // TRESORERIE
 // ═══════════════════════════════════════════════════════════════
 function renderTresorerie() {
-  var el = document.getElementById('page-tresorerie');
+  var el = document.getElementById("page-tresorerie");
   var ops = state.tresorerie || [];
   var enc = ops.filter(function(o){return o.type==='encaissement';}).reduce(function(a,o){return a+o.montant;},0);
   var dec = ops.filter(function(o){return o.type==='decaissement';}).reduce(function(a,o){return a+o.montant;},0);
@@ -1199,11 +1199,11 @@ function tresoForm(type) {
 async function saveTreso(type) {
   var d = {
     type: type,
-    compte: document.getElementById('tr_cpt').value,
-    date_op: document.getElementById('tr_date').value,
-    libelle: document.getElementById('tr_lib').value,
-    montant: +document.getElementById('tr_mt').value,
-    reference: document.getElementById('tr_ref').value
+    compte: document.getElementById("tr_cpt").value,
+    date_op: document.getElementById("tr_date").value,
+    libelle: document.getElementById("tr_lib").value,
+    montant: +document.getElementById("tr_mt").value,
+    reference: document.getElementById("tr_ref").value
   };
   if (!d.libelle||!d.montant) return toast('Libelle et montant requis','error');
   try {
@@ -1216,7 +1216,7 @@ async function saveTreso(type) {
 // CRM
 // ═══════════════════════════════════════════════════════════════
 function renderCRM() {
-  var el = document.getElementById('page-crm');
+  var el = document.getElementById("page-crm");
   var prospects = state.crm || [];
   var pipeline = ['nouveau','contacte','negocie','gagne','perdu'];
   var html = '<div class="page-header"><div><div class="page-title">🎯 CRM Prospects</div>';
@@ -1265,14 +1265,14 @@ function crmForm(id) {
 
 async function saveCRM(id) {
   var d = {
-    nom: document.getElementById('p_nom').value,
-    societe: document.getElementById('p_soc').value,
-    tel: document.getElementById('p_tel').value,
-    email: document.getElementById('p_email').value,
-    valeur_estimee: +document.getElementById('p_val').value,
-    probabilite: +document.getElementById('p_prob').value,
-    statut: document.getElementById('p_stat').value,
-    notes: document.getElementById('p_notes').value
+    nom: document.getElementById("p_nom").value,
+    societe: document.getElementById("p_soc").value,
+    tel: document.getElementById("p_tel").value,
+    email: document.getElementById("p_email").value,
+    valeur_estimee: +document.getElementById("p_val").value,
+    probabilite: +document.getElementById("p_prob").value,
+    statut: document.getElementById("p_stat").value,
+    notes: document.getElementById("p_notes").value
   };
   if (!d.nom) return toast('Nom requis','error');
   try {
@@ -1286,7 +1286,7 @@ async function saveCRM(id) {
 // RAPPORTS
 // ═══════════════════════════════════════════════════════════════
 function renderRapports() {
-  var el = document.getElementById('page-rapports');
+  var el = document.getElementById("page-rapports");
   var facts = state.documents.filter(function(d){return d.type==='facture'&&d.statut==='valide';});
   var buls = state.bulletins || [];
   var ca = facts.reduce(function(a,f){return a+f.total_ttc;},0);
@@ -1329,7 +1329,7 @@ function renderRapports() {
 // ALERTES
 // ═══════════════════════════════════════════════════════════════
 function renderAlertes() {
-  var el = document.getElementById('page-alertes');
+  var el = document.getElementById("page-alertes");
   var alertes = state.alertes || [];
   var unread = alertes.filter(function(a){return !a.lu;}).length;
   var html = '<div class="page-header"><div><div class="page-title">🔔 Alertes</div>';
@@ -1362,7 +1362,7 @@ async function marquerToutLu() {
 // PARAMETRES
 // ═══════════════════════════════════════════════════════════════
 function renderParametres() {
-  var el = document.getElementById('page-parametres');
+  var el = document.getElementById("page-parametres");
   var acc = currentAccount;
   var html = '<div class="page-header"><div><div class="page-title">⚙ Parametres</div>';
   html += '<div class="page-sub">Mentions legales obligatoires sur factures CGI Art.145</div></div></div>';
@@ -1390,7 +1390,7 @@ function renderParametres() {
   // Logo & Cachet
   html += '<div style="display:flex;flex-direction:column;gap:12px">';
   html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">Logo entreprise</div>';
-  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_logo?'#1a5fb4':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById('logo_input').click()">';
+  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_logo?'#1a5fb4':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById("logo_input").click()">';
   if (acc.company_logo) {
     html += '<img src="'+acc.company_logo+'" style="max-width:100%;max-height:120px;object-fit:contain">';
   } else {
@@ -1398,7 +1398,7 @@ function renderParametres() {
   }
   html += '</div><input type="file" id="logo_input" accept="image/*" style="display:none" onchange="uploadImage('logo')"></div>';
   html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">Cachet & Signature</div>';
-  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_cachet?'#22c55e':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById('cachet_input').click()">';
+  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_cachet?'#22c55e':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById("cachet_input").click()">';
   if (acc.company_cachet) {
     html += '<img src="'+acc.company_cachet+'" style="max-width:100%;max-height:120px;object-fit:contain">';
   } else {
@@ -1426,10 +1426,10 @@ function uploadImage(type) {
     var d = {};
     d['company_'+type] = b64;
     // Save all current fields too
-    d.company_name = document.getElementById('cfg_name').value;
-    d.company_ice = document.getElementById('cfg_ice').value;
-    d.company_if = document.getElementById('cfg_if').value;
-    d.company_rc = document.getElementById('cfg_rc').value;
+    d.company_name = document.getElementById("cfg_name").value;
+    d.company_ice = document.getElementById("cfg_ice").value;
+    d.company_if = document.getElementById("cfg_if").value;
+    d.company_rc = document.getElementById("cfg_rc").value;
     try {
       await api('PUT','/api/auth/profile', d);
       currentAccount['company_'+type] = b64;
@@ -1442,20 +1442,20 @@ function uploadImage(type) {
 
 async function saveProfile() {
   var d = {
-    company_name: document.getElementById('cfg_name').value,
-    company_forme_juridique: document.getElementById('cfg_forme').value,
-    company_capital: document.getElementById('cfg_capital').value,
-    company_ice: document.getElementById('cfg_ice').value,
-    company_if: document.getElementById('cfg_if').value,
-    company_rc: document.getElementById('cfg_rc').value,
-    company_patente: document.getElementById('cfg_pat').value,
-    company_cnss: document.getElementById('cfg_cnss').value,
-    company_phone: document.getElementById('cfg_tel').value,
-    company_email: document.getElementById('cfg_email').value,
-    company_address: document.getElementById('cfg_adr').value,
-    company_city: document.getElementById('cfg_ville').value,
-    company_rib: document.getElementById('cfg_rib').value,
-    company_banque: document.getElementById('cfg_banque').value,
+    company_name: document.getElementById("cfg_name").value,
+    company_forme_juridique: document.getElementById("cfg_forme").value,
+    company_capital: document.getElementById("cfg_capital").value,
+    company_ice: document.getElementById("cfg_ice").value,
+    company_if: document.getElementById("cfg_if").value,
+    company_rc: document.getElementById("cfg_rc").value,
+    company_patente: document.getElementById("cfg_pat").value,
+    company_cnss: document.getElementById("cfg_cnss").value,
+    company_phone: document.getElementById("cfg_tel").value,
+    company_email: document.getElementById("cfg_email").value,
+    company_address: document.getElementById("cfg_adr").value,
+    company_city: document.getElementById("cfg_ville").value,
+    company_rib: document.getElementById("cfg_rib").value,
+    company_banque: document.getElementById("cfg_banque").value,
     company_logo: currentAccount.company_logo || '',
     company_cachet: currentAccount.company_cachet || ''
   };
@@ -1470,7 +1470,7 @@ async function saveProfile() {
 // SUPER ADMIN
 // ═══════════════════════════════════════════════════════════════
 async function renderSuperAdmin() {
-  var el = document.getElementById('page-superadmin');
+  var el = document.getElementById("page-superadmin");
   if (currentAccount.role !== 'super') {
     el.innerHTML = '<div class="card" style="text-align:center;color:#ef4444;padding:40px">Acces refuse</div>';
     return;
@@ -1536,11 +1536,11 @@ function createAccount() {
 
 async function saveNewAccount() {
   var d = {
-    name: document.getElementById('ac_name').value,
-    email: document.getElementById('ac_email').value,
-    password: document.getElementById('ac_pass').value,
-    company_name: document.getElementById('ac_soc').value,
-    plan: document.getElementById('ac_plan').value
+    name: document.getElementById("ac_name").value,
+    email: document.getElementById("ac_email").value,
+    password: document.getElementById("ac_pass").value,
+    company_name: document.getElementById("ac_soc").value,
+    plan: document.getElementById("ac_plan").value
   };
   if (!d.name||!d.email||!d.password) return toast('Nom, email et MDP requis','error');
   try {
@@ -1568,11 +1568,11 @@ async function editAccount(id) {
 
 async function saveEditAccount(id) {
   var d = {
-    name: document.getElementById('ea_name').value,
-    plan: document.getElementById('ea_plan').value,
-    status: document.getElementById('ea_status').value
+    name: document.getElementById("ea_name").value,
+    plan: document.getElementById("ea_plan").value,
+    status: document.getElementById("ea_status").value
   };
-  var pass = document.getElementById('ea_pass').value;
+  var pass = document.getElementById("ea_pass").value;
   if (pass) d.newPassword = pass;
   try {
     await api('PUT','/api/admin/accounts/'+id,d);
@@ -1602,8 +1602,8 @@ function approveTrialForm(id, name, email) {
 }
 
 async function approveTrial(id, email, name) {
-  var plan = document.getElementById('ap_plan').value;
-  var password = document.getElementById('ap_pass').value;
+  var plan = document.getElementById("ap_plan").value;
+  var password = document.getElementById("ap_pass").value;
   if (!password) return toast('MDP requis','error');
   try {
     await api('POST','/api/admin/accounts',{name:name,email:email,password:password,plan:plan});
@@ -1619,33 +1619,33 @@ function showTrialModal() {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('trialErr').style.display = 'none';
-  document.getElementById('trialOk').style.display = 'none';
-  document.getElementById('trialFoot').style.display = 'flex';
-  document.getElementById('trialModal').classList.add('open');
+  document.getElementById("trialErr").style.display = 'none';
+  document.getElementById("trialOk").style.display = 'none';
+  document.getElementById("trialFoot").style.display = 'flex';
+  document.getElementById("trialModal").classList.add('open');
 }
 
 async function submitTrial() {
-  var nom = document.getElementById('tr_nom').value.trim();
-  var prenom = document.getElementById('tr_prenom').value.trim();
-  var phone = document.getElementById('tr_phone').value.trim();
-  var email = document.getElementById('tr_email').value.trim();
-  var societe = document.getElementById('tr_societe').value.trim();
-  var secteur = document.getElementById('tr_secteur').value;
-  var err = document.getElementById('trialErr');
+  var nom = document.getElementById("tr_nom").value.trim();
+  var prenom = document.getElementById("tr_prenom").value.trim();
+  var phone = document.getElementById("tr_phone").value.trim();
+  var email = document.getElementById("tr_email").value.trim();
+  var societe = document.getElementById("tr_societe").value.trim();
+  var secteur = document.getElementById("tr_secteur").value;
+  var err = document.getElementById("trialErr");
   err.style.display = 'none';
   if (!nom||!prenom||!phone||!email||!societe) {
     err.textContent = 'Tous les champs sont requis';
     err.style.display = 'block';
     return;
   }
-  var btn = document.getElementById('trialBtn');
+  var btn = document.getElementById("trialBtn");
   btn.textContent = 'Envoi...';
   btn.disabled = true;
   try {
     await api('POST','/api/trial',{nom:nom,prenom:prenom,phone:phone,email:email,societe:societe,secteur:secteur});
-    document.getElementById('trialOk').style.display = 'block';
-    document.getElementById('trialFoot').style.display = 'none';
+    document.getElementById("trialOk").style.display = 'block';
+    document.getElementById("trialFoot").style.display = 'none';
   } catch(e) {
     err.textContent = e.error || 'Erreur. Reessayez.';
     err.style.display = 'block';
@@ -1918,7 +1918,7 @@ async function printBulletin(id) {
 // STOCK MOUVEMENTS
 // ═══════════════════════════════════════════════════════════════
 function renderStock() {
-  var el = document.getElementById('page-stock');
+  var el = document.getElementById("page-stock");
   var arts = state.articles || [];
   var alertes = arts.filter(function(a){return a.stock_actuel<=a.stock_min && a.stock_min>0;});
   var html = '<div class="page-header"><div><div class="page-title">📊 Mouvements Stock</div>';
@@ -1970,7 +1970,7 @@ function ajusterStock(artId, type) {
 }
 
 async function saveAjustStock(artId, type) {
-  var qty = +document.getElementById('mvt_qty').value;
+  var qty = +document.getElementById("mvt_qty").value;
   if (!qty||qty<=0) return toast('Quantite invalide','error');
   var a = state.articles.find(function(x){return x.id==artId;});
   var new_stock = type==='entree' ? a.stock_actuel+qty : a.stock_actuel-qty;
@@ -1987,7 +1987,7 @@ function mvtStockForm() { ajusterStock(state.articles[0]&&state.articles[0].id,'
 // DECLARATIONS FISCALES
 // ═══════════════════════════════════════════════════════════════
 function renderDeclarations() {
-  var el = document.getElementById('page-declarations');
+  var el = document.getElementById("page-declarations");
   var now = new Date();
   var m = now.getMonth()+1;
   var y = now.getFullYear();
@@ -2055,7 +2055,7 @@ function renderDeclarations() {
 // CHANTIERS BTP
 // ═══════════════════════════════════════════════════════════════
 function renderChantiers() {
-  var el = document.getElementById('page-chantiers');
+  var el = document.getElementById("page-chantiers");
   var html = '<div class="page-header"><div><div class="page-title">🏗 Chantiers BTP</div>';
   html += '<div class="page-sub">Suivi de chantiers · Materiaux · Avancement</div></div>';
   html += '<button class="btn btn-blue" onclick="toast('Module en cours de deploiement','info')">+ Nouveau chantier</button></div>';
