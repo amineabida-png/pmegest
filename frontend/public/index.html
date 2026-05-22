@@ -1942,7 +1942,7 @@ function renderStock() {
   el.innerHTML = html;
 }
 
-function ajusterStock(artId, typeN) { var type=typeN===1?'entree':'sortie';
+function ajusterStock(artId, typeN) { var type=typeN===1?'entree':'sortie'; window._st=type;
   var a = state.articles.find(function(x){return x.id==artId;});
   if (!a) return;
   openModal((type==='entree'?'Entree stock +':'Sortie stock -')+' — '+a.designation,
@@ -1953,7 +1953,8 @@ function ajusterStock(artId, typeN) { var type=typeN===1?'entree':'sortie';
     '<div class="form-field full"><label>Motif</label><input id="mvt_motif" placeholder="Achat fournisseur, vente client..."></div>'+
     '</div>',
     '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
-    '<button class="btn btn-blue" onclick="saveAjustStock('+artId+',''+type+'')">Confirmer</button>'
+    '<button class="btn btn-blue" onclick="saveAjustStock('+artId+',window._st)">Confirmer</button>'
+
   );
 }
 
