@@ -2,7 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>PMEGest.ma — Gestion PME Maroc 2026</title>
 <style>
@@ -75,7 +77,7 @@ button{touch-action:manipulation;font-family:inherit}
 .btn-success{background:#22c55e18;border:1px solid #22c55e30;color:#22c55e}
 .btn-warning{background:#f59e0b18;border:1px solid #f59e0b30;color:#f59e0b}
 .btn-sm{padding:5px 12px;font-size:11px;border-radius:7px}
-.table-wrap{overflow-x:auto}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;min-width:600px}
 th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #0f1e35}
 td{padding:11px 12px;font-size:13px;border-bottom:1px solid #06111e}
@@ -100,6 +102,30 @@ tr:hover td{background:#ffffff04}
 .t-success{background:#16a34a}.t-error{background:#dc2626}.t-info{background:#1d4ed8}.t-warning{background:#d97706}
 @media(max-width:768px){.sidebar{width:56px}.sb-title,.sb-sub,.sb-sub-ar,.nav-item span:not(.ni),.user-name,.user-role,.lic-badge,.nav-section{display:none}.main{margin-left:56px}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.page{padding:14px}}
 @media(max-width:480px){.sidebar{width:100%;height:56px;flex-direction:row;position:fixed;bottom:0;top:auto;border-right:none;border-top:1px solid #0f1e35;overflow-x:auto;overflow-y:hidden}.sb-header,.sb-footer,.nav-section{display:none!important}.sb-nav{flex-direction:row;display:flex;align-items:center;width:100%;padding:0}.nav-item{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:6px 4px;border-radius:0;border-left:none;border-top:2px solid transparent;font-size:9px;justify-content:center}.nav-item.active{border-top-color:#1a5fb4;background:#1a5fb410}.main{margin-left:0;margin-bottom:56px}.page{padding:10px}.page-header{flex-direction:column;align-items:flex-start}}
+
+/* SAFE AREA - iPhone notch/home bar */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  @media(max-width:480px){
+    .sidebar{padding-bottom:env(safe-area-inset-bottom)}
+    .main{margin-bottom:calc(56px + env(safe-area-inset-bottom))}
+  }
+  .topbar{padding-top:env(safe-area-inset-top,0)}
+}
+/* SCROLL MOMENTUM iOS */
+.modal,.sb-nav,.page{-webkit-overflow-scrolling:touch}
+/* LARGER TOUCH TARGETS */
+.btn-sm{min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+.nav-item{min-height:40px}
+/* PREVENT TEXT SELECTION ON BUTTONS */
+button{-webkit-user-select:none;user-select:none}
+/* ACTIVE STATE MOBILE */
+.btn:active{opacity:0.8;transform:scale(0.98)}
+.nav-item:active{background:#2563eb20}
+
+@supports(padding-bottom:env(safe-area-inset-bottom)){body{padding-bottom:env(safe-area-inset-bottom)}}
+.modal,.sb-nav,.page{-webkit-overflow-scrolling:touch}
+button{-webkit-user-select:none;user-select:none}
+.btn:active{opacity:0.8}
 </style>
 </head>
 <body>
