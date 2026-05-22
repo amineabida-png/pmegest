@@ -134,25 +134,22 @@ db.exec(`
     type TEXT NOT NULL, numero TEXT NOT NULL, date_doc TEXT NOT NULL,
     date_echeance TEXT DEFAULT '', tiers_id INTEGER,
     tiers_nom TEXT DEFAULT '', tiers_ice TEXT DEFAULT '',
-    tiers_if TEXT DEFAULT '', tiers_rc TEXT DEFAULT '',
-    tiers_adresse TEXT DEFAULT '', tiers_ville TEXT DEFAULT '',
-    tiers_tel TEXT DEFAULT '', statut TEXT DEFAULT 'brouillon',
+    tiers_if TEXT DEFAULT '', tiers_adresse TEXT DEFAULT '',
+    tiers_ville TEXT DEFAULT '', statut TEXT DEFAULT 'brouillon',
     total_ht REAL DEFAULT 0, total_tva REAL DEFAULT 0,
     total_ttc REAL DEFAULT 0, montant_paye REAL DEFAULT 0,
-    mode_paiement TEXT DEFAULT 'virement', banque TEXT DEFAULT '',
-    ref_externe TEXT DEFAULT '', objet TEXT DEFAULT '',
-    conditions TEXT DEFAULT '', notes TEXT DEFAULT '',
+    mode_paiement TEXT DEFAULT 'virement', notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (account_id) REFERENCES accounts(id)
   );
   CREATE TABLE IF NOT EXISTS document_lignes (
     id INTEGER PRIMARY KEY AUTOINCREMENT, document_id INTEGER NOT NULL,
-    article_id INTEGER, designation TEXT NOT NULL,
-    description TEXT DEFAULT '', unite TEXT DEFAULT 'U',
-    quantite REAL DEFAULT 1, prix_unit_ht REAL DEFAULT 0,
-    taux_remise REAL DEFAULT 0, taux_tva REAL DEFAULT 20,
-    montant_ht REAL DEFAULT 0, montant_tva REAL DEFAULT 0,
-    montant_ttc REAL DEFAULT 0, ordre INTEGER DEFAULT 0,
+    article_id INTEGER, designation TEXT DEFAULT '',
+    unite TEXT DEFAULT 'U', quantite REAL DEFAULT 1,
+    prix_unit_ht REAL DEFAULT 0, taux_remise REAL DEFAULT 0,
+    taux_tva REAL DEFAULT 20, montant_ht REAL DEFAULT 0,
+    montant_tva REAL DEFAULT 0, montant_ttc REAL DEFAULT 0,
+    ordre INTEGER DEFAULT 0,
     FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
   );
   CREATE TABLE IF NOT EXISTS numerotation (
@@ -482,15 +479,15 @@ app.post('/api/documents',auth,(req,res)=>{
     return res.status(400).json({error:'Numero deja existant'});
   const lignes=d.lignes||[];let ht=0,tva=0;
   const tx=db.transaction(()=>{
-    const r=db.prepare('INSERT INTO documents (account_id,type,numero,date_doc,date_echeance,tiers_id,tiers_nom,tiers_ice,tiers_if,tiers_rc,tiers_adresse,tiers_ville,tiers_tel,statut,total_ht,total_tva,total_ttc,mode_paiement,banque,ref_externe,objet,conditions,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,?,?,?,?,?,?)')
-      .run(req.account.id,d.type,numero,d.date_doc,d.date_echeance||null,d.tiers_id||null,d.tiers_nom||'',d.tiers_ice||'',d.tiers_if||'',d.tiers_rc||'',d.tiers_adresse||'',d.tiers_ville||'',d.tiers_tel||'',d.statut||'brouillon',d.mode_paiement||'virement',d.banque||'',d.ref_externe||'',d.objet||'',d.conditions||'',d.notes||'');
+    const r=db.prepare('INSERT INTO documents (account_id,type,numero,date_doc,date_echeance,tiers_id,tiers_nom,tiers_ice,tiers_if,tiers_adresse,tiers_ville,statut,total_ht,total_tva,total_ttc,mode_paiement,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,?,?)')
+      .run(req.account.id,d.type,numero,d.date_doc,d.date_echeance||null,d.tiers_id||null,d.tiers_nom||'',d.tiers_ice||'',d.tiers_if||'',d.tiers_adresse||'',d.tiers_ville||'',d.statut||'brouillon',d.mode_paiement||'virement',d.notes||'');
     const did=r.lastInsertRowid;
     lignes.forEach((l,i)=>{
       const h=Math.round((l.quantite||1)*(l.prix_unit_ht||0)*(1-(l.taux_remise||0)/100)*100)/100;
       const tv=Math.round(h*(l.taux_tva||20)/100*100)/100;
       ht+=h;tva+=tv;
-      db.prepare('INSERT INTO document_lignes (document_id,article_id,designation,description,unite,quantite,prix_unit_ht,taux_remise,taux_tva,montant_ht,montant_tva,montant_ttc,ordre) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        .run(did,l.article_id||null,l.designation,l.description||'',l.unite||'U',l.quantite||1,l.prix_unit_ht||0,l.taux_remise||0,l.taux_tva||20,h,tv,h+tv,i);
+      db.prepare('INSERT INTO document_lignes (document_id,article_id,designation,unite,quantite,prix_unit_ht,taux_remise,taux_tva,montant_ht,montant_tva,montant_ttc,ordre) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(did,l.article_id||null,l.designation||'',l.unite||'U',l.quantite||1,l.prix_unit_ht||0,l.taux_remise||0,l.taux_tva||20,h,tv,h+tv,i);
     });
     ht=Math.round(ht*100)/100;tva=Math.round(tva*100)/100;
     db.prepare('UPDATE documents SET total_ht=?,total_tva=?,total_ttc=? WHERE id=?').run(ht,tva,Math.round((ht+tva)*100)/100,did);
