@@ -46,7 +46,7 @@ try { db.exec("ALTER TABLE bulletins ADD COLUMN charge_patronale_total REAL DEFA
 try { db.exec("ALTER TABLE documents ADD COLUMN account_id INTEGER DEFAULT 1"); } catch(e) {}
 try { db.exec("ALTER TABLE documents ADD COLUMN numero TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE documents ADD COLUMN date_doc TEXT DEFAULT ''"); } catch(e) {}
-try { db.exec("ALTER TABLE documents ADD COLUMN tiers_id INTEGER DEFAULT NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_id INTEGER"); } catch(e) {}
 try { db.exec("ALTER TABLE documents ADD COLUMN tiers_nom TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE documents ADD COLUMN tiers_if TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE documents ADD COLUMN tiers_rc TEXT DEFAULT ''"); } catch(e) {}
@@ -82,7 +82,7 @@ try { db.exec("ALTER TABLE accounts ADD COLUMN company_capital TEXT DEFAULT ''")
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_forme_juridique TEXT DEFAULT ''"); } catch(e) {}
 
 
-db.exec(`
+try { db.exec(``
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
@@ -259,7 +259,7 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (account_id) REFERENCES accounts(id)
   );
-`);
+`); } catch(e) { console.error('DB init error:', e.message); }
 
 // RESET DB if requested
 if (process.env.RESET_DB === 'true') {
@@ -429,7 +429,7 @@ app.get('/api/tiers',auth,(req,res)=>{
   const{type}=req.query;
   let q='SELECT * FROM tiers WHERE account_id=?';const p=[req.account.id];
   if(type){q+=' AND (type=? OR type="les_deux")';p.push(type);}
-  q+=' ORDER BY raison_sociale';res.json(db.prepare(q).all(...p));
+  q+=' ORDER BY raison_sociale';try{res.json(db.prepare(q).all(...p));}catch(e){console.error('GET tiers:',e.message);res.json([]);}
 });
 app.post('/api/tiers',auth,(req,res)=>{
   const d=req.body;if(!d.raison_sociale||!d.type)return res.status(400).json({error:'Raison sociale et type requis'});
@@ -446,7 +446,7 @@ app.put('/api/tiers/:id',auth,(req,res)=>{
 app.delete('/api/tiers/:id',auth,(req,res)=>{db.prepare('DELETE FROM tiers WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── ARTICLES ──────────────────────────────────────────────────
-app.get('/api/articles',auth,(req,res)=>res.json(db.prepare('SELECT * FROM articles WHERE account_id=? AND actif=1 ORDER BY designation').all(req.account.id)));
+app.get('/api/articles',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM articles WHERE account_id=? AND actif=1 ORDER BY designation').all(req.account.id)));}catch(e){console.error("GET articles:",e.message);res.json([]);}
 app.post('/api/articles',auth,(req,res)=>{
   const d=req.body;if(!d.designation||!d.code)return res.status(400).json({error:'Code et designation requis'});
   const r=db.prepare('INSERT INTO articles (account_id,code,designation,description,type,categorie,unite,prix_achat,prix_vente_ht,taux_tva,stock_actuel,stock_min,stock_max,depot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -465,7 +465,7 @@ app.delete('/api/articles/:id',auth,(req,res)=>{db.prepare('UPDATE articles SET 
 app.get('/api/documents',auth,(req,res)=>{
   const{type}=req.query;let q='SELECT * FROM documents WHERE account_id=?';const p=[req.account.id];
   if(type){q+=' AND type=?';p.push(type);}q+=' ORDER BY date_doc DESC,id DESC';
-  res.json(db.prepare(q).all(...p));
+  try{res.json(db.prepare(q).all(...p));}catch(e){console.error('GET docs:',e.message);res.json([]);}
 });
 app.get('/api/documents/:id',auth,(req,res)=>{
   const doc=db.prepare('SELECT * FROM documents WHERE id=? AND account_id=?').get(req.params.id,req.account.id);
@@ -512,7 +512,10 @@ app.delete('/api/documents/:id',auth,(req,res)=>{
 });
 
 // ── EMPLOYES ──────────────────────────────────────────────────
-app.get('/api/employes',auth,(req,res)=>res.json(db.prepare("SELECT * FROM employes WHERE account_id=? AND statut!='archive' ORDER BY nom,prenom").all(req.account.id)));
+app.get('/api/employes',auth,(req,res)=>{
+  try { res.json(db.prepare("SELECT * FROM employes WHERE account_id=? AND statut!='archive' ORDER BY nom,prenom").all(req.account.id)); }
+  catch(e) { console.error('GET employes:',e.message); res.json([]); }
+});
 app.post('/api/employes',auth,(req,res)=>{
   const d=req.body;
   if(!d.nom||!d.prenom||!d.date_embauche)return res.status(400).json({error:'Nom, prenom et date embauche requis'});
@@ -546,7 +549,7 @@ app.post('/api/paie/simuler',auth,(req,res)=>{
 });
 app.get('/api/bulletins',auth,(req,res)=>{
   const{mois,annee,employe_id}=req.query;
-  let q='SELECT b.*,e.nom,e.prenom,e.matricule,e.poste,e.cnss_num,e.rib,e.banque,e.mode_paiement,e.cin FROM bulletins b JOIN employes e ON b.employe_id=e.id WHERE b.account_id=?';
+  let q='SELECT b.*, e.nom, e.prenom FROM bulletins b JOIN employes e ON b.employe_id=e.id WHERE b.account_id=?';
   const p=[req.account.id];
   if(mois){q+=' AND b.mois=?';p.push(mois);}
   if(annee){q+=' AND b.annee=?';p.push(annee);}
@@ -619,7 +622,10 @@ app.get('/api/paie/bordereau-cnss',auth,(req,res)=>{
 });
 
 // ── CONGES ────────────────────────────────────────────────────
-app.get('/api/conges',auth,(req,res)=>res.json(db.prepare('SELECT c.*,e.nom,e.prenom,e.matricule FROM conges c JOIN employes e ON c.employe_id=e.id WHERE c.account_id=? ORDER BY c.date_debut DESC').all(req.account.id)));
+app.get('/api/conges',auth,(req,res)=>{
+  try{res.json(db.prepare('SELECT c.*,e.nom,e.prenom FROM conges c JOIN employes e ON c.employe_id=e.id WHERE c.account_id=? ORDER BY c.date_debut DESC').all(req.account.id));}
+  catch(e){console.error('GET conges:',e.message);res.json([]);}
+});
 app.post('/api/conges',auth,(req,res)=>{
   const d=req.body;
   const r=db.prepare('INSERT INTO conges (account_id,employe_id,type,date_debut,date_fin,nb_jours,motif) VALUES (?,?,?,?,?,?,?)').run(req.account.id,d.employe_id,d.type||'annuel',d.date_debut,d.date_fin,d.nb_jours||0,d.motif||'');
@@ -628,7 +634,7 @@ app.post('/api/conges',auth,(req,res)=>{
 app.put('/api/conges/:id',auth,(req,res)=>{db.prepare('UPDATE conges SET statut=? WHERE id=? AND account_id=?').run(req.body.statut||'approuve',req.params.id,req.account.id);res.json({success:true});});
 
 // ── TRESORERIE ────────────────────────────────────────────────
-app.get('/api/tresorerie',auth,(req,res)=>res.json(db.prepare('SELECT * FROM tresorerie WHERE account_id=? ORDER BY date_op DESC').all(req.account.id)));
+app.get('/api/tresorerie',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM tresorerie WHERE account_id=? ORDER BY date_op DESC').all(req.account.id)));}catch(e){console.error("GET tresorerie:",e.message);res.json([]);}
 app.post('/api/tresorerie',auth,(req,res)=>{
   const d=req.body;
   const r=db.prepare('INSERT INTO tresorerie (account_id,compte,type,date_op,libelle,montant,reference,tiers_id,categorie) VALUES (?,?,?,?,?,?,?,?,?)').run(req.account.id,d.compte||'Caisse',d.type,d.date_op,d.libelle,d.montant,d.reference||'',d.tiers_id||null,d.categorie||'');
@@ -660,7 +666,7 @@ app.post('/api/depenses',auth,(req,res)=>{
 app.delete('/api/depenses/:id',auth,(req,res)=>{db.prepare('DELETE FROM depenses WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── CRM ───────────────────────────────────────────────────────
-app.get('/api/crm',auth,(req,res)=>res.json(db.prepare('SELECT * FROM crm_prospects WHERE account_id=? ORDER BY created_at DESC').all(req.account.id)));
+app.get('/api/crm',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM crm_prospects WHERE account_id=? ORDER BY created_at DESC').all(req.account.id)));}catch(e){console.error("GET crm_prospects:",e.message);res.json([]);}
 app.post('/api/crm',auth,(req,res)=>{
   const d=req.body;
   const r=db.prepare('INSERT INTO crm_prospects (account_id,nom,societe,tel,email,secteur,valeur_estimee,statut,probabilite,date_relance,source,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(req.account.id,d.nom,d.societe||'',d.tel||'',d.email||'',d.secteur||'',d.valeur_estimee||0,d.statut||'nouveau',d.probabilite||20,d.date_relance||null,d.source||'',d.notes||'');
@@ -683,12 +689,12 @@ app.post('/api/maintenance',auth,(req,res)=>{
 app.delete('/api/maintenance/:id',auth,(req,res)=>{db.prepare('DELETE FROM maintenance WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── ALERTES ───────────────────────────────────────────────────
-app.get('/api/alertes',auth,(req,res)=>res.json(db.prepare('SELECT * FROM alertes WHERE account_id=? ORDER BY id DESC').all(req.account.id)));
+app.get('/api/alertes',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM alertes WHERE account_id=? ORDER BY id DESC').all(req.account.id)));}catch(e){console.error("GET alertes:",e.message);res.json([]);}
 app.put('/api/alertes/:id/lu',auth,(req,res)=>{db.prepare('UPDATE alertes SET lu=1 WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 app.put('/api/alertes/all/lu',auth,(req,res)=>{db.prepare('UPDATE alertes SET lu=1 WHERE account_id=?').run(req.account.id);res.json({success:true});});
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-app.get('/api/dashboard',auth,(req,res)=>{
+app.get('/api/dashboard',auth,(req,res)=>{ try {
   const aid=req.account.id;
   const now=new Date();const m=now.getMonth()+1;const y=now.getFullYear();
   const ym=y+'-'+String(m).padStart(2,'0');
@@ -752,6 +758,7 @@ app.get('/api/legal',(req,res)=>res.json(L));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'frontend/public/index.html')));
 
 app.listen(PORT,'0.0.0.0',()=>{
+  console.log('Server started successfully on port '+PORT);
   console.log('PMEGest.ma ERP port '+PORT);
   console.log('Super Admin: admin@pmegest.ma / PMEGest2026@Admin');
   console.log('SMIG 2026: '+L.SMIG+' MAD | CNSS: '+(L.CNSS_SAL*100)+'% | AMO: '+(L.AMO_SAL*100)+'%');
