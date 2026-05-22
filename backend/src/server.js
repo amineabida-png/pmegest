@@ -446,7 +446,7 @@ app.put('/api/tiers/:id',auth,(req,res)=>{
 app.delete('/api/tiers/:id',auth,(req,res)=>{db.prepare('DELETE FROM tiers WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── ARTICLES ──────────────────────────────────────────────────
-app.get('/api/articles',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM articles WHERE account_id=? AND actif=1 ORDER BY designation').all(req.account.id)));}catch(e){console.error("GET articles:",e.message);res.json([]);}
+app.get('/api/articles',auth,(req,res)=>{ try {res.json(db.prepare('SELECT * FROM articles WHERE account_id=? AND actif=1 ORDER BY designation').all(req.account.id));}catch(e){console.error("GET articles:",e.message);res.json([]);} });
 app.post('/api/articles',auth,(req,res)=>{
   const d=req.body;if(!d.designation||!d.code)return res.status(400).json({error:'Code et designation requis'});
   const r=db.prepare('INSERT INTO articles (account_id,code,designation,description,type,categorie,unite,prix_achat,prix_vente_ht,taux_tva,stock_actuel,stock_min,stock_max,depot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -634,7 +634,7 @@ app.post('/api/conges',auth,(req,res)=>{
 app.put('/api/conges/:id',auth,(req,res)=>{db.prepare('UPDATE conges SET statut=? WHERE id=? AND account_id=?').run(req.body.statut||'approuve',req.params.id,req.account.id);res.json({success:true});});
 
 // ── TRESORERIE ────────────────────────────────────────────────
-app.get('/api/tresorerie',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM tresorerie WHERE account_id=? ORDER BY date_op DESC').all(req.account.id)));}catch(e){console.error("GET tresorerie:",e.message);res.json([]);}
+app.get('/api/tresorerie',auth,(req,res)=>{ try {res.json(db.prepare('SELECT * FROM tresorerie WHERE account_id=? ORDER BY date_op DESC').all(req.account.id));}catch(e){console.error("GET tresorerie:",e.message);res.json([]);} });
 app.post('/api/tresorerie',auth,(req,res)=>{
   const d=req.body;
   const r=db.prepare('INSERT INTO tresorerie (account_id,compte,type,date_op,libelle,montant,reference,tiers_id,categorie) VALUES (?,?,?,?,?,?,?,?,?)').run(req.account.id,d.compte||'Caisse',d.type,d.date_op,d.libelle,d.montant,d.reference||'',d.tiers_id||null,d.categorie||'');
@@ -666,7 +666,7 @@ app.post('/api/depenses',auth,(req,res)=>{
 app.delete('/api/depenses/:id',auth,(req,res)=>{db.prepare('DELETE FROM depenses WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── CRM ───────────────────────────────────────────────────────
-app.get('/api/crm',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM crm_prospects WHERE account_id=? ORDER BY created_at DESC').all(req.account.id)));}catch(e){console.error("GET crm_prospects:",e.message);res.json([]);}
+app.get('/api/crm',auth,(req,res)=>{ try {res.json(db.prepare('SELECT * FROM crm_prospects WHERE account_id=? ORDER BY created_at DESC').all(req.account.id));}catch(e){console.error("GET crm_prospects:",e.message);res.json([]);} });
 app.post('/api/crm',auth,(req,res)=>{
   const d=req.body;
   const r=db.prepare('INSERT INTO crm_prospects (account_id,nom,societe,tel,email,secteur,valeur_estimee,statut,probabilite,date_relance,source,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(req.account.id,d.nom,d.societe||'',d.tel||'',d.email||'',d.secteur||'',d.valeur_estimee||0,d.statut||'nouveau',d.probabilite||20,d.date_relance||null,d.source||'',d.notes||'');
@@ -689,7 +689,7 @@ app.post('/api/maintenance',auth,(req,res)=>{
 app.delete('/api/maintenance/:id',auth,(req,res)=>{db.prepare('DELETE FROM maintenance WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 
 // ── ALERTES ───────────────────────────────────────────────────
-app.get('/api/alertes',auth,(req,res)=>try{res.json(db.prepare('SELECT * FROM alertes WHERE account_id=? ORDER BY id DESC').all(req.account.id)));}catch(e){console.error("GET alertes:",e.message);res.json([]);}
+app.get('/api/alertes',auth,(req,res)=>{ try {res.json(db.prepare('SELECT * FROM alertes WHERE account_id=? ORDER BY id DESC').all(req.account.id));}catch(e){console.error("GET alertes:",e.message);res.json([]);} });
 app.put('/api/alertes/:id/lu',auth,(req,res)=>{db.prepare('UPDATE alertes SET lu=1 WHERE id=? AND account_id=?').run(req.params.id,req.account.id);res.json({success:true});});
 app.put('/api/alertes/all/lu',auth,(req,res)=>{db.prepare('UPDATE alertes SET lu=1 WHERE account_id=?').run(req.account.id);res.json({success:true});});
 
@@ -725,6 +725,7 @@ app.get('/api/dashboard',auth,(req,res)=>{ try {
     echeance_cnss:y+'-'+String(m+1).padStart(2,'0')+'-10',
     echeance_ir:y+'-'+String(m+1).padStart(2,'0')+'-20'
   });
+} catch(e) { console.error('dashboard:',e.message); res.json({ca_mois:0,ca_annee:0,impaye:0,nb_clients:0,nb_employes:0,masse_salariale:0,stock_alerte:0,alertes_non_lues:0,devis_en_cours:0,ca_par_mois:[]}); }
 });
 
 // ── SUPER ADMIN ───────────────────────────────────────────────
