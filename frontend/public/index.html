@@ -1409,6 +1409,7 @@ function renderParametres() {
   document.getElementById('pf_cachet').onchange = function(){ pfSave('cachet', this); };
 }
 
+function pfToast(){toast("Module en cours de deploiement","info");}
 function pfUpload(n) {
   document.getElementById(n===1?'pf_logo':'pf_cachet').click();
 }
