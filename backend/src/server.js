@@ -43,6 +43,29 @@ try { db.exec("ALTER TABLE bulletins ADD COLUMN amo_patronal REAL DEFAULT 0"); }
 try { db.exec("ALTER TABLE bulletins ADD COLUMN af_patronal REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE bulletins ADD COLUMN tfp_patronal REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE bulletins ADD COLUMN charge_patronale_total REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN account_id INTEGER DEFAULT 1"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN numero TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN date_doc TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_id INTEGER DEFAULT NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_nom TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_if TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_rc TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_ville TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN tiers_tel TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN total_tva REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN total_ttc REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN mode_paiement TEXT DEFAULT 'virement'"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN ref_externe TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN conditions TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE documents ADD COLUMN notes TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN document_id INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN designation TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN description TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN quantite REAL DEFAULT 1"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN taux_remise REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN montant_ht REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN montant_ttc REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE document_lignes ADD COLUMN ordre INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE tiers ADD COLUMN cnss TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE tiers ADD COLUMN fax TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE tiers ADD COLUMN site_web TEXT DEFAULT ''"); } catch(e) {}
@@ -86,8 +109,9 @@ db.exec(`
     type TEXT NOT NULL, raison_sociale TEXT NOT NULL,
     ice TEXT DEFAULT '', if_fiscal TEXT DEFAULT '', rc TEXT DEFAULT '',
     patente TEXT DEFAULT '', cnss TEXT DEFAULT '',
-    adresse TEXT DEFAULT '', ville TEXT DEFAULT '', code_postal TEXT DEFAULT '',
-    pays TEXT DEFAULT 'Maroc', tel TEXT DEFAULT '', fax TEXT DEFAULT '',
+    adresse TEXT DEFAULT '', ville TEXT DEFAULT '',
+    code_postal TEXT DEFAULT '', pays TEXT DEFAULT 'Maroc',
+    tel TEXT DEFAULT '', fax TEXT DEFAULT '',
     email TEXT DEFAULT '', site_web TEXT DEFAULT '',
     contact_nom TEXT DEFAULT '', contact_tel TEXT DEFAULT '',
     regime_tva TEXT DEFAULT 'assujetti', plafond_credit REAL DEFAULT 0,
@@ -108,24 +132,27 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL,
     type TEXT NOT NULL, numero TEXT NOT NULL, date_doc TEXT NOT NULL,
-    date_echeance TEXT, tiers_id INTEGER, tiers_nom TEXT DEFAULT '',
-    tiers_ice TEXT DEFAULT '', tiers_if TEXT DEFAULT '', tiers_rc TEXT DEFAULT '',
-    tiers_adresse TEXT DEFAULT '', tiers_ville TEXT DEFAULT '', tiers_tel TEXT DEFAULT '',
-    statut TEXT DEFAULT 'brouillon', taux_remise_global REAL DEFAULT 0,
-    total_ht REAL DEFAULT 0, total_tva REAL DEFAULT 0, total_ttc REAL DEFAULT 0,
-    montant_paye REAL DEFAULT 0, mode_paiement TEXT DEFAULT 'virement',
-    banque TEXT DEFAULT '', ref_externe TEXT DEFAULT '',
-    objet TEXT DEFAULT '', conditions TEXT DEFAULT '', notes TEXT DEFAULT '',
+    date_echeance TEXT DEFAULT '', tiers_id INTEGER,
+    tiers_nom TEXT DEFAULT '', tiers_ice TEXT DEFAULT '',
+    tiers_if TEXT DEFAULT '', tiers_rc TEXT DEFAULT '',
+    tiers_adresse TEXT DEFAULT '', tiers_ville TEXT DEFAULT '',
+    tiers_tel TEXT DEFAULT '', statut TEXT DEFAULT 'brouillon',
+    total_ht REAL DEFAULT 0, total_tva REAL DEFAULT 0,
+    total_ttc REAL DEFAULT 0, montant_paye REAL DEFAULT 0,
+    mode_paiement TEXT DEFAULT 'virement', banque TEXT DEFAULT '',
+    ref_externe TEXT DEFAULT '', objet TEXT DEFAULT '',
+    conditions TEXT DEFAULT '', notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (account_id) REFERENCES accounts(id)
   );
   CREATE TABLE IF NOT EXISTS document_lignes (
     id INTEGER PRIMARY KEY AUTOINCREMENT, document_id INTEGER NOT NULL,
-    article_id INTEGER, designation TEXT NOT NULL, description TEXT DEFAULT '',
-    unite TEXT DEFAULT 'U', quantite REAL DEFAULT 1,
-    prix_unit_ht REAL DEFAULT 0, taux_remise REAL DEFAULT 0,
-    taux_tva REAL DEFAULT 20, montant_ht REAL DEFAULT 0,
-    montant_tva REAL DEFAULT 0, montant_ttc REAL DEFAULT 0, ordre INTEGER DEFAULT 0,
+    article_id INTEGER, designation TEXT NOT NULL,
+    description TEXT DEFAULT '', unite TEXT DEFAULT 'U',
+    quantite REAL DEFAULT 1, prix_unit_ht REAL DEFAULT 0,
+    taux_remise REAL DEFAULT 0, taux_tva REAL DEFAULT 20,
+    montant_ht REAL DEFAULT 0, montant_tva REAL DEFAULT 0,
+    montant_ttc REAL DEFAULT 0, ordre INTEGER DEFAULT 0,
     FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
   );
   CREATE TABLE IF NOT EXISTS numerotation (
@@ -239,9 +266,10 @@ db.exec(`
 
 // RESET DB if requested
 if (process.env.RESET_DB === 'true') {
-  const tables = ['trial_requests','tiers','articles','documents','document_lignes','numerotation','employes','bulletins','conges','tresorerie','alertes','crm_prospects','mouvements_stock','ecritures','parametres'];
-  tables.forEach(t => { try { db.prepare('DELETE FROM '+t).run(); } catch(e){} });
-  console.log('🗑️ DB reset - all data cleared');
+  // Drop and recreate all tables for clean schema
+  const dropTables = ['document_lignes','documents','numerotation','bulletins','conges','tresorerie','crm_prospects','alertes','stock_mouvements','depenses','bon_commande_achat','maintenance','articles','tiers','employes','trial_requests'];
+  dropTables.forEach(t => { try { db.exec('DROP TABLE IF EXISTS '+t); } catch(e){} });
+  console.log('🗑️ DB reset - all tables dropped and will be recreated');
 }
 
 // SUPER ADMIN
