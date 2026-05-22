@@ -2048,7 +2048,7 @@ function renderChantiers() {
   var el = document.getElementById("page-chantiers");
   var html = '<div class="page-header"><div><div class="page-title">🏗 Chantiers BTP</div>';
   html += '<div class="page-sub">Suivi de chantiers · Materiaux · Avancement</div></div>';
-  html += '<button class="btn btn-blue" onclick="toast('Module en cours de deploiement','info')">+ Nouveau chantier</button></div>';
+  html += '<button class="btn btn-blue" onclick="pfToast()">+ Nouveau chantier</button></div>';
   // Demo chantiers
   var chantiers = [
     {nom:'Residence Al Wifak - Bloc A',client:'ARAB AGENCEMENT SARL',budget:2500000,avancement:65,statut:'En cours',ville:'Casablanca'},
