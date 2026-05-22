@@ -43,6 +43,13 @@ try { db.exec("ALTER TABLE bulletins ADD COLUMN amo_patronal REAL DEFAULT 0"); }
 try { db.exec("ALTER TABLE bulletins ADD COLUMN af_patronal REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE bulletins ADD COLUMN tfp_patronal REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE bulletins ADD COLUMN charge_patronale_total REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN cnss TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN fax TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN site_web TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN contact_tel TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN code_postal TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN delai_paiement INTEGER DEFAULT 30"); } catch(e) {}
+try { db.exec("ALTER TABLE tiers ADD COLUMN solde REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_logo TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_cachet TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_cnss TEXT DEFAULT ''"); } catch(e) {}
@@ -524,7 +531,7 @@ app.get('/api/bulletins',auth,(req,res)=>{
 });
 app.post('/api/bulletins',auth,(req,res)=>{
   const d=req.body;
-  if(!d.employe_id||!d.mois||!d.annee)return res.status(400).json({error:'Employe, mois et annee requis'});
+  if(!d.employe_id||parseInt(d.employe_id)<1||!d.mois||!d.annee)return res.status(400).json({error:'Employe, mois et annee requis'});
   const emp=db.prepare('SELECT * FROM employes WHERE id=? AND account_id=?').get(d.employe_id,req.account.id);
   if(!emp)return res.status(404).json({error:'Employe non trouve'});
   if(db.prepare('SELECT id FROM bulletins WHERE account_id=? AND employe_id=? AND mois=? AND annee=?').get(req.account.id,d.employe_id,d.mois,d.annee))
