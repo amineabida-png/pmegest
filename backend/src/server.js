@@ -82,7 +82,7 @@ try { db.exec("ALTER TABLE accounts ADD COLUMN company_capital TEXT DEFAULT ''")
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_forme_juridique TEXT DEFAULT ''"); } catch(e) {}
 
 
-try { db.exec(``
+try { db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
