@@ -671,7 +671,8 @@ function renderDocs(type, label, icon) {
         '<td>'+badge(d.statut)+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         (d.statut!=='valide'?'<button class="btn btn-blue btn-sm" onclick="validerDoc('+d.id+')">Valider</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="delItem(\'documents\','+d.id+',\'ce document\')">Suppr</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="printDoc('+d.id+')">🖨</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
         '</div></td></tr>';
     });
   }
@@ -964,7 +965,8 @@ function renderPaie() {
         '<td>'+badge(b.statut)+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         (b.statut!=='valide'?'<button class="btn btn-success btn-sm" onclick="validerBulletin('+b.id+')">Valider</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="delItem(\'bulletins\','+b.id+',\'ce bulletin\')">Suppr</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="printBulletin('+b.id+')">🖨</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delBulletin('+b.id+')">✕</button>'+
         '</div></td></tr>';
     });
   }

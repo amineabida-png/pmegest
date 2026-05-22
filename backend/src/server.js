@@ -209,6 +209,13 @@ db.exec(`
   );
 `);
 
+// RESET DB if requested
+if (process.env.RESET_DB === 'true') {
+  const tables = ['trial_requests','tiers','articles','documents','document_lignes','numerotation','employes','bulletins','conges','tresorerie','alertes','crm_prospects','mouvements_stock','ecritures','parametres'];
+  tables.forEach(t => { try { db.prepare('DELETE FROM '+t).run(); } catch(e){} });
+  console.log('🗑️ DB reset - all data cleared');
+}
+
 // SUPER ADMIN
 if (!db.prepare("SELECT id FROM accounts WHERE role='super'").get()) {
   db.prepare("INSERT INTO accounts (name,email,password,role,company_name,plan,expires_at) VALUES (?,?,?,'super','PMEGest.ma','enterprise','2099-12-31')")
