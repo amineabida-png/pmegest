@@ -150,6 +150,10 @@ tr:hover td{background:#ffffff04}
       <div id="page-dashboard" class="page active"></div>
       <div id="page-facturation" class="page"></div>
       <div id="page-devis" class="page"></div>
+      <div id="page-proforma" class="page"></div>
+      <div id="page-bon_commande" class="page"></div>
+      <div id="page-bon_livraison" class="page"></div>
+      <div id="page-avoir" class="page"></div>
       <div id="page-clients" class="page"></div>
       <div id="page-fournisseurs" class="page"></div>
       <div id="page-articles" class="page"></div>
@@ -671,6 +675,10 @@ function renderDocs(type, label, icon) {
         '<td>'+badge(d.statut)+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         (d.statut!=='valide'?'<button class="btn btn-blue btn-sm" onclick="validerDoc('+d.id+')">Valider</button>':'')+
+        (d.type==='devis'?'<button class="btn btn-success btn-sm" onclick="convertDoc('+d.id+',\'facture\')">→FA</button>':'')+
+        (d.type==='bon_commande'?'<button class="btn btn-success btn-sm" onclick="convertDoc('+d.id+',\'bon_livraison\')">→BL</button>':'')+
+        (d.type==='bon_livraison'?'<button class="btn btn-success btn-sm" onclick="convertDoc('+d.id+',\'facture\')">→FA</button>':'')+
+        (d.type==='facture'?'<button class="btn btn-warning btn-sm" onclick="convertDoc('+d.id+',\'avoir\')">→AV</button>':'')+
         '<button class="btn btn-ghost btn-sm" onclick="printDoc('+d.id+')">🖨</button>'+
         '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
         '</div></td></tr>';
@@ -678,6 +686,33 @@ function renderDocs(type, label, icon) {
   }
   html += '</tbody></table></div></div>';
   el.innerHTML = html;
+}
+
+async function convertDoc(srcId, newType) {
+  try {
+    const src = await api('GET', '/api/documents/'+srcId);
+    const typeLabels = {facture:'Facture',avoir:'Avoir',bon_livraison:'Bon de Livraison',bon_commande:'Bon de Commande',proforma:'Proforma'};
+    window._convertSrc = src;
+    window._convertType = newType;
+    toast('Conversion → '+typeLabels[newType]+' en cours...','info');
+    const d = {
+      type: newType,
+      date_doc: new Date().toISOString().split('T')[0],
+      tiers_id: src.tiers_id,
+      tiers_nom: src.tiers_nom,
+      tiers_ice: src.tiers_ice,
+      tiers_if: src.tiers_if,
+      tiers_adresse: src.tiers_adresse,
+      tiers_ville: src.tiers_ville,
+      mode_paiement: src.mode_paiement,
+      notes: 'Converti depuis '+src.numero,
+      lignes: src.lignes
+    };
+    await api('POST', '/api/documents', d);
+    await loadAll();
+    showPage(newType==='facture'?'facturation':newType==='bon_livraison'?'bon_livraison':newType==='avoir'?'avoir':'facturation');
+    toast('Conversion réussie ✓','success');
+  } catch(e) { toast(e.error||'Erreur conversion','error'); }
 }
 
 function docForm(id, type) {

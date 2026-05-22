@@ -505,8 +505,6 @@ app.put('/api/documents/:id',auth,(req,res)=>{
   res.json({success:true});
 });
 app.delete('/api/documents/:id',auth,(req,res)=>{
-  const doc=db.prepare('SELECT statut FROM documents WHERE id=? AND account_id=?').get(req.params.id,req.account.id);
-  if(doc?.statut==='valide')return res.status(400).json({error:'Document valide'});
   db.prepare('DELETE FROM documents WHERE id=? AND account_id=?').run(req.params.id,req.account.id);
   res.json({success:true});
 });
@@ -605,8 +603,6 @@ app.post('/api/bulletins',auth,(req,res)=>{
 
 app.put('/api/bulletins/:id/valider',auth,(req,res)=>{db.prepare("UPDATE bulletins SET statut='valide' WHERE id=? AND account_id=?").run(req.params.id,req.account.id);res.json({success:true});});
 app.delete('/api/bulletins/:id',auth,(req,res)=>{
-  const b=db.prepare('SELECT statut FROM bulletins WHERE id=? AND account_id=?').get(req.params.id,req.account.id);
-  if(b?.statut==='valide')return res.status(400).json({error:'Bulletin valide'});
   db.prepare('DELETE FROM bulletins WHERE id=? AND account_id=?').run(req.params.id,req.account.id);
   res.json({success:true});
 });
