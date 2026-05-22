@@ -25,6 +25,24 @@ db.pragma('foreign_keys = ON');
 try { db.exec("ALTER TABLE employes ADD COLUMN indemnite_transport REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE employes ADD COLUMN indemnite_repas REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE employes ADD COLUMN nationalite TEXT DEFAULT 'Marocaine'"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN nb_jours_travailles REAL DEFAULT 26"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN heures_sup_25 REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN heures_sup_50 REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN prime_anciennete REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN taux_anciennete REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN autres_primes REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN indemnite_transport REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN ipe_salarie REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN frais_pro REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN taux_frais_pro REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN rni_mensuel REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN ir_brut REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN deduction_famille REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN cnss_patronal REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN amo_patronal REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN af_patronal REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN tfp_patronal REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE bulletins ADD COLUMN charge_patronale_total REAL DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_logo TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_cachet TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN company_cnss TEXT DEFAULT ''"); } catch(e) {}
@@ -522,22 +540,45 @@ app.post('/api/bulletins',auth,(req,res)=>{
   if(!emp)return res.status(404).json({error:'Employe non trouve'});
   if(db.prepare('SELECT id FROM bulletins WHERE account_id=? AND employe_id=? AND mois=? AND annee=?').get(req.account.id,d.employe_id,d.mois,d.annee))
     return res.status(400).json({error:'Bulletin deja existant pour cette periode'});
-  const calcData={
+  const calc=calculerBulletin({
     salaire_base:d.salaire_base||emp.salaire_base,
-    nb_heures_sup_25:d.nb_heures_sup_25||0,nb_heures_sup_50:d.nb_heures_sup_50||0,
-    nb_heures_sup_100:d.nb_heures_sup_100||0,
-    avantages_nature:d.avantages_nature||0,indemnite_transport:d.indemnite_transport||0,
-    indemnite_repas:d.indemnite_repas||0,autres_primes:d.autres_primes||0,
-    avances:d.avances||0,
+    heures_sup_25:d.heures_sup_25||0,
+    heures_sup_50:d.heures_sup_50||0,
+    autres_primes:d.autres_primes||0,
+    indemnite_transport:emp.indemnite_transport||0,
     nb_enfants:d.nb_enfants!==undefined?d.nb_enfants:emp.nb_enfants,
     conjoint:d.conjoint!==undefined?d.conjoint:emp.conjoint,
     date_embauche:emp.date_embauche
-  };
-  const calc=calculerBulletin(calcData);
-  const r=db.prepare('INSERT INTO bulletins (account_id,employe_id,mois,annee,salaire_base,nb_jours_travailles,nb_jours_absence,nb_heures_sup_25,nb_heures_sup_50,nb_heures_sup_100,prime_anciennete,taux_anciennete,annees_anciennete,heures_sup_25_montant,heures_sup_50_montant,heures_sup_100_montant,taux_horaire,avantages_nature,indemnite_transport,indemnite_repas,autres_primes,salaire_brut,cnss_base,cnss_taux,cnss_salarie,amo_base,amo_taux,amo_salarie,ipe_salarie,total_cotisations,rni_mensuel,frais_pro,taux_frais_pro,base_ir,ir_brut,nb_personnes_charge,deduction_famille,ir_net,total_retenues,avances,salaire_net,cnss_patronal,amo_patronal,af_patronal,tfp_patronal,charge_patronale_total,statut) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(req.account.id,d.employe_id,d.mois,d.annee,calc.salaire_base,d.nb_jours_travailles||26,d.nb_jours_absence||0,calc.nb_heures_sup_25,calc.nb_heures_sup_50,calc.nb_heures_sup_100||0,calc.prime_anciennete,calc.taux_anciennete,calc.annees_anciennete,calc.heures_sup_25_montant,calc.heures_sup_50_montant,calc.heures_sup_100_montant||0,calc.taux_horaire,calc.avantages_nature,calc.indemnite_transport,calc.indemnite_repas,calc.autres_primes,calc.salaire_brut,calc.cnss_base,calc.cnss_taux,calc.cnss_salarie,calc.amo_base,calc.amo_taux,calc.amo_salarie,calc.ipe_salarie,calc.total_cotisations,calc.rni_mensuel,calc.frais_pro,calc.taux_frais_pro,calc.base_ir,calc.ir_brut,calc.nb_personnes_charge,calc.deduction_famille,calc.ir_net,calc.total_retenues,calc.avances,calc.salaire_net,calc.cnss_patronal,calc.amo_patronal,calc.af_patronal,calc.tfp_patronal,calc.charge_patronale_total,'brouillon');
-  res.json({success:true,id:r.lastInsertRowid,calcul:calc});
+  });
+  try {
+    const r=db.prepare(`INSERT INTO bulletins 
+      (account_id,employe_id,mois,annee,salaire_base,nb_jours_travailles,
+       heures_sup_25,heures_sup_50,prime_anciennete,taux_anciennete,autres_primes,
+       indemnite_transport,salaire_brut,cnss_salarie,amo_salarie,ipe_salarie,
+       frais_pro,taux_frais_pro,rni_mensuel,ir_brut,deduction_famille,ir_net,
+       total_retenues,salaire_net,cnss_patronal,amo_patronal,af_patronal,
+       tfp_patronal,charge_patronale_total,statut)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'brouillon')`)
+    .run(
+      req.account.id,d.employe_id,d.mois,d.annee,
+      calc.salaire_base,d.nb_jours_travailles||26,
+      d.heures_sup_25||0,d.heures_sup_50||0,
+      calc.prime_anciennete,calc.taux_anciennete,
+      d.autres_primes||0,calc.indemnite_transport||0,
+      calc.salaire_brut,calc.cnss_salarie,calc.amo_salarie,calc.ipe_salarie,
+      calc.frais_pro,calc.taux_frais_pro,calc.rni_mensuel,
+      calc.ir_brut,calc.deduction_famille,calc.ir_net,
+      calc.total_retenues,calc.salaire_net,
+      calc.cnss_patronal,calc.amo_patronal,calc.af_patronal,calc.tfp_patronal,
+      calc.charge_patronale_total
+    );
+    res.json({success:true,id:r.lastInsertRowid,calcul:calc});
+  } catch(e) {
+    console.error('Bulletin INSERT error:',e.message);
+    res.status(500).json({error:'Erreur creation bulletin: '+e.message});
+  }
 });
+
 app.put('/api/bulletins/:id/valider',auth,(req,res)=>{db.prepare("UPDATE bulletins SET statut='valide' WHERE id=? AND account_id=?").run(req.params.id,req.account.id);res.json({success:true});});
 app.delete('/api/bulletins/:id',auth,(req,res)=>{
   const b=db.prepare('SELECT statut FROM bulletins WHERE id=? AND account_id=?').get(req.params.id,req.account.id);
