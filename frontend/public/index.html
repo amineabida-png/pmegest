@@ -423,15 +423,14 @@ function renderPage(p) {
   else if (p === 'chantiers') renderChantiers();
 }
 
-async function delDoc(id) { delItem("documents", id, "ce document"); }
-
-function delTiers(id) { delItem('tiers', id, 'ce tiers'); }
-function delArticle(id) { delItem('articles', id, 'cet article'); }
-function delDoc(id) { delItem('documents', id, 'ce document'); }
-function delEmploye(id) { delItem('employes', id, 'cet employe'); }
-function delBulletin(id) { delItem('bulletins', id, 'ce bulletin'); }
-function delConge(id) { delItem('conges', id, 'ce conge'); }
-function delCRM(id) { delItem('crm', id, 'ce prospect'); }
+async 
+function delTiers(id){delItem('tiers',id,'ce tiers');}
+function delArticle(id){delItem('articles',id,'cet article');}
+function delDoc(id){delItem('documents',id,'ce document');}
+function delEmploye(id){delItem('employes',id,'cet employe');}
+function delBulletin(id){delItem('bulletins',id,'ce bulletin');}
+function delCRM(id){delItem('crm',id,'ce prospect');}
+function delConge(id){delItem('conges',id,'ce conge');}
 function delItem(resource, id, label) {
   confirm2('Supprimer', 'Supprimer '+label+' ?', async function() {
     try {
@@ -525,7 +524,7 @@ function renderTiers(type) {
       html += '<td style="font-size:12px">'+(t.tel||'-')+'</td>';
       html += '<td><div style="display:flex;gap:4px">';
       html += '<button class="btn btn-ghost btn-sm" onclick="tiersForm('+t.id+',\''+type+'\')">Modifier</button>';
-      html += '<button class="btn btn-danger btn-sm" onclick="delTiers('+t.id+')">Suppr</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="delItem(\'tiers\','+t.id+',\'ce tiers\')">Suppr</button>';
       html += '</div></td></tr>';
     });
   }
@@ -601,7 +600,7 @@ function renderArticles() {
         '<td style="font-weight:700;color:'+(alert?'#ef4444':'#22c55e')+'">'+a.stock_actuel+' '+a.unite+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         '<button class="btn btn-ghost btn-sm" onclick="articleForm('+a.id+')">Modifier</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="delArticle('+a.id+')">Suppr</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delItem(\'articles\','+a.id+',\'cet article\')">Suppr</button>'+
         '</div></td></tr>';
     });
   }
@@ -651,7 +650,6 @@ async function saveArticle(id) {
 // DOCUMENTS
 // ═══════════════════════════════════════════════════════════════
 function renderDocs(type, label, icon) {
-  window._currentDocType = type;
   var el = document.getElementById('page-'+(type==='facture'?'facturation':'devis'));
   var docs = state.documents.filter(function(d){return d.type===type;});
   var total = docs.filter(function(d){return d.statut==='valide';}).reduce(function(a,d){return a+d.total_ttc;},0);
@@ -674,7 +672,7 @@ function renderDocs(type, label, icon) {
         '<td>'+badge(d.statut)+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         (d.statut!=='valide'?'<button class="btn btn-blue btn-sm" onclick="validerDoc('+d.id+')">Valider</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">Suppr</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delItem(\'documents\','+d.id+',\'ce document\')">Suppr</button>'+
         '</div></td></tr>';
     });
   }
@@ -834,7 +832,7 @@ function renderEmployes() {
         '<td><div style="display:flex;gap:4px">'+
         '<button class="btn btn-ghost btn-sm" onclick="empForm('+e.id+')">Modifier</button>'+
         '<button class="btn btn-success btn-sm" onclick="genBulletin('+e.id+')">Bulletin</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="delEmploye('+e.id+')">Suppr</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delItem(\'employes\','+e.id+',\'cet employe\')">Suppr</button>'+
         '</div></td></tr>';
     });
   }
@@ -967,7 +965,7 @@ function renderPaie() {
         '<td>'+badge(b.statut)+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
         (b.statut!=='valide'?'<button class="btn btn-success btn-sm" onclick="validerBulletin('+b.id+')">Valider</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="delBulletin('+b.id+')">Suppr</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delItem(\'bulletins\','+b.id+',\'ce bulletin\')">Suppr</button>'+
         '</div></td></tr>';
     });
   }
@@ -1260,7 +1258,7 @@ function crmForm(id) {
     '<div class="form-field full"><label>Notes</label><textarea id="p_notes">'+(p.notes||'')+'</textarea></div>'+
     '</div>',
     '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
-    (id?'<button class="btn btn-danger" onclick="delCRM('+id+')">Suppr</button>':'')+
+    (id?'<button class="btn btn-danger" onclick="delItem(\'crm\','+id+',\'ce prospect\')">Suppr</button>':'')+
     '<button class="btn btn-blue" onclick="saveCRM('+id+')">'+( id?'Enregistrer':'Ajouter')+'</button>'
   );
 }
@@ -1366,104 +1364,81 @@ async function marquerToutLu() {
 function renderParametres() {
   var el = document.getElementById('page-parametres');
   var acc = currentAccount;
-  var hasLogo = !!acc.company_logo;
-  var hasCachet = !!acc.company_cachet;
-
-  var formeOpts = ['','SARL','SA','SNC','Auto-entrepreneur','Personne physique','GIE'].map(function(f){
-    return '<option value="'+f+'"'+((acc.company_forme_juridique||'')===f?' selected':'')+'>'+f+'</option>';
-  }).join('');
-  var banqueOpts = ['','Attijariwafa Bank','CIH Bank','Banque Populaire','BMCE Bank','BMCI','Societe Generale','Credit Agricole','CDM','Al Barid Bank'].map(function(b){
-    return '<option value="'+b+'"'+((acc.company_banque||'')===b?' selected':'')+'>'+b+'</option>';
-  }).join('');
-
-  var html = '<div class="page-header"><div><div class="page-title">Parametres</div>';
+  var html = '<div class="page-header"><div><div class="page-title">⚙ Parametres</div>';
   html += '<div class="page-sub">Mentions legales obligatoires sur factures CGI Art.145</div></div></div>';
   html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">';
-
-  // Left: company form
   html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:14px">Votre entreprise</div>';
-  html += '<div class="form-grid">';
-  html += '<div class="form-field full"><label>Raison sociale</label><input id="cfg_name" value="'+(acc.company_name||'')+'"></div>';
-  html += '<div class="form-field"><label>Forme juridique</label><select id="cfg_forme">'+formeOpts+'</select></div>';
-  html += '<div class="form-field"><label>Capital (MAD)</label><input id="cfg_capital" value="'+(acc.company_capital||'')+'"></div>';
-  html += '<div class="form-field"><label>ICE (15 chiffres)</label><input id="cfg_ice" value="'+(acc.company_ice||'')+'" maxlength="15"></div>';
-  html += '<div class="form-field"><label>IF Fiscal</label><input id="cfg_if" value="'+(acc.company_if||'')+'"></div>';
-  html += '<div class="form-field"><label>RC</label><input id="cfg_rc" value="'+(acc.company_rc||'')+'"></div>';
-  html += '<div class="form-field"><label>Patente</label><input id="cfg_pat" value="'+(acc.company_patente||'')+'"></div>';
-  html += '<div class="form-field"><label>N CNSS Patronal</label><input id="cfg_cnss" value="'+(acc.company_cnss||'')+'"></div>';
-  html += '<div class="form-field"><label>Telephone</label><input id="cfg_tel" value="'+(acc.company_phone||'')+'"></div>';
-  html += '<div class="form-field"><label>Email</label><input type="email" id="cfg_email" value="'+(acc.company_email||'')+'"></div>';
-  html += '<div class="form-field full"><label>Adresse</label><input id="cfg_adr" value="'+(acc.company_address||'')+'"></div>';
-  html += '<div class="form-field"><label>Ville</label><input id="cfg_ville" value="'+(acc.company_city||'')+'"></div>';
-  html += '<div class="form-field"><label>RIB</label><input id="cfg_rib" value="'+(acc.company_rib||'')+'"></div>';
-  html += '<div class="form-field"><label>Banque</label><select id="cfg_banque">'+banqueOpts+'</select></div>';
-  html += '</div>';
-  html += '<button class="btn btn-blue" onclick="saveProfile()" style="margin-top:14px">Enregistrer</button></div>';
-
-  // Right: logo, cachet, taux
+  html += '<div class="form-grid">'+
+    '<div class="form-field full"><label>Raison sociale *</label><input id="cfg_name" value="'+(acc.company_name||'')+'"></div>'+
+    '<div class="form-field"><label>Forme juridique</label><select id="cfg_forme"><option value="">-</option>'+
+    ['SARL','SA','SNC','Auto-entrepreneur','Personne physique','GIE','Cooperative'].map(function(f){return '<option value="'+f+'"'+((acc.company_forme_juridique||'')===f?' selected':'')+'>'+f+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="form-field"><label>Capital (MAD)</label><input id="cfg_capital" value="'+(acc.company_capital||'')+'"></div>'+
+    '<div class="form-field"><label>ICE (15 chiffres) *</label><input id="cfg_ice" value="'+(acc.company_ice||'')+'" maxlength="15"></div>'+
+    '<div class="form-field"><label>IF Fiscal *</label><input id="cfg_if" value="'+(acc.company_if||'')+'"></div>'+
+    '<div class="form-field"><label>RC *</label><input id="cfg_rc" value="'+(acc.company_rc||'')+'"></div>'+
+    '<div class="form-field"><label>Patente</label><input id="cfg_pat" value="'+(acc.company_patente||'')+'"></div>'+
+    '<div class="form-field"><label>N° CNSS Patronal</label><input id="cfg_cnss" value="'+(acc.company_cnss||'')+'"></div>'+
+    '<div class="form-field"><label>Telephone</label><input id="cfg_tel" value="'+(acc.company_phone||'')+'"></div>'+
+    '<div class="form-field"><label>Email</label><input type="email" id="cfg_email" value="'+(acc.company_email||'')+'"></div>'+
+    '<div class="form-field full"><label>Adresse</label><input id="cfg_adr" value="'+(acc.company_address||'')+'"></div>'+
+    '<div class="form-field"><label>Ville</label><input id="cfg_ville" value="'+(acc.company_city||'')+'"></div>'+
+    '<div class="form-field"><label>RIB Bancaire</label><input id="cfg_rib" value="'+(acc.company_rib||'')+'"></div>'+
+    '<div class="form-field"><label>Banque</label><input id="cfg_banque" value="'+(acc.company_banque||'')+'"></div>'+
+    '</div>';
+  html += '<button class="btn btn-blue" onclick="saveProfile()" style="margin-top:14px">💾 Enregistrer</button></div>';
+  // Logo & Cachet
   html += '<div style="display:flex;flex-direction:column;gap:12px">';
-
-  // Logo
-  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:10px">Logo entreprise</div>';
-  html += '<div id="logo_preview" style="width:100%;height:100px;background:#06111e;border:2px dashed '+(hasLogo?'#1a5fb4':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:8px" onclick="triggerLogoUpload()">';
-  if (hasLogo) {
-    html += '<img src="'+acc.company_logo+'" style="max-width:100%;max-height:100px;object-fit:contain">';
+  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">Logo entreprise</div>';
+  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_logo?'#1a5fb4':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById('logo_input').click()">';
+  if (acc.company_logo) {
+    html += '<img src="'+acc.company_logo+'" style="max-width:100%;max-height:120px;object-fit:contain">';
   } else {
-    html += '<div style="text-align:center;color:#334155"><div style="font-size:24px">🏢</div><div style="font-size:11px;margin-top:4px">Cliquer pour uploader</div></div>';
+    html += '<div style="text-align:center;color:#334155"><div style="font-size:28px">🏢</div><div style="font-size:12px;margin-top:4px">Cliquer pour uploader</div><div style="font-size:10px;color:#64748b">PNG, JPG — max 500KB</div></div>';
   }
-  html += '</div>';
-  html += '<input type="file" id="logo_file" accept="image/*" style="display:none">';
-  html += '<button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="triggerLogoUpload()">Choisir logo</button></div>';
-
-  // Cachet
-  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:10px">Cachet &amp; Signature</div>';
-  html += '<div id="cachet_preview" style="width:100%;height:100px;background:#06111e;border:2px dashed '+(hasCachet?'#22c55e':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:8px" onclick="triggerCachetUpload()">';
-  if (hasCachet) {
-    html += '<img src="'+acc.company_cachet+'" style="max-width:100%;max-height:100px;object-fit:contain">';
+  html += '</div><input type="file" id="logo_input" accept="image/*" style="display:none" onchange="uploadImage('logo')"></div>';
+  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">Cachet & Signature</div>';
+  html += '<div style="width:100%;height:120px;background:#06111e;border:2px dashed '+(acc.company_cachet?'#22c55e':'#0f1e35')+';border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="document.getElementById('cachet_input').click()">';
+  if (acc.company_cachet) {
+    html += '<img src="'+acc.company_cachet+'" style="max-width:100%;max-height:120px;object-fit:contain">';
   } else {
-    html += '<div style="text-align:center;color:#334155"><div style="font-size:24px">🔖</div><div style="font-size:11px;margin-top:4px">Cliquer pour uploader</div></div>';
+    html += '<div style="text-align:center;color:#334155"><div style="font-size:28px">🔖</div><div style="font-size:12px;margin-top:4px">Cliquer pour uploader</div><div style="font-size:10px;color:#64748b">PNG transparent recommande</div></div>';
   }
-  html += '</div>';
-  html += '<input type="file" id="cachet_file" accept="image/*" style="display:none">';
-  html += '<button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="triggerCachetUpload()">Choisir cachet</button></div>';
-
-  // Taux legaux
+  html += '</div><input type="file" id="cachet_input" accept="image/*" style="display:none" onchange="uploadImage('cachet')"></div>';
   html += '<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Taux legaux 2026</div>';
-  var taux = [['CNSS sal.','4.48%'],['AMO sal.','2.26%'],['IPE','0.19%'],['CNSS pat.','8.98%'],['TVA norm.','20%'],['SMIG','3422 MAD'],['SMIG/h','17.92 MAD']];
+  var taux = [['CNSS sal.','4.48%'],['AMO sal.','2.26%'],['IPE','0.19%'],['CNSS pat.','8.98%'],['TVA norm.','20%'],['SMIG','3422 MAD']];
   taux.forEach(function(t){
-    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #06111e;font-size:11px"><span style="color:#64748b">'+t[0]+'</span><span style="font-weight:700;color:#1a5fb4">'+t[1]+'</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #06111e;font-size:12px"><span style="color:#64748b">'+t[0]+'</span><span style="font-weight:700;color:#1a5fb4">'+t[1]+'</span></div>';
   });
   html += '</div>';
-  html += '</div>'; // end right col
-  html += '</div>'; // end grid
-
+  html += '</div></div>';
   el.innerHTML = html;
-
-  // Attach file handlers AFTER innerHTML is set
-  document.getElementById('logo_file').addEventListener('change', function() { uploadImg('logo', this); });
-  document.getElementById('cachet_file').addEventListener('change', function() { uploadImg('cachet', this); });
 }
 
-function triggerLogoUpload() { document.getElementById('logo_file').click(); }
-function triggerCachetUpload() { document.getElementById('cachet_file').click(); }
-
-function uploadImg(type, input) {
+function uploadImage(type) {
+  var input = document.getElementById(type+'_input');
   var file = input.files[0];
   if (!file) return;
-  if (file.size > 600000) return toast('Image trop grande (max 500KB)', 'error');
+  if (file.size > 600000) return toast('Image trop grande (max 500KB)','error');
   var reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     var b64 = e.target.result;
-    currentAccount['company_'+type] = b64;
-    var d = {company_logo: currentAccount.company_logo||'', company_cachet: currentAccount.company_cachet||''};
-    api('PUT', '/api/auth/profile', d).then(function() {
-      toast((type==='logo'?'Logo':'Cachet')+' sauvegarde', 'success');
+    var d = {};
+    d['company_'+type] = b64;
+    // Save all current fields too
+    d.company_name = document.getElementById('cfg_name').value;
+    d.company_ice = document.getElementById('cfg_ice').value;
+    d.company_if = document.getElementById('cfg_if').value;
+    d.company_rc = document.getElementById('cfg_rc').value;
+    try {
+      await api('PUT','/api/auth/profile', d);
+      currentAccount['company_'+type] = b64;
+      toast(type==='logo'?'Logo sauvegarde':'Cachet sauvegarde','success');
       renderPage('parametres');
-    }).catch(function(e) { toast('Erreur upload', 'error'); });
+    } catch(e) { toast('Erreur upload','error'); }
   };
   reader.readAsDataURL(file);
 }
-
 
 async function saveProfile() {
   var d = {
