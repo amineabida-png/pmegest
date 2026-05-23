@@ -180,6 +180,9 @@ button{-webkit-user-select:none;user-select:none}
       <div id="page-bon_commande" class="page"></div>
       <div id="page-bon_livraison" class="page"></div>
       <div id="page-avoir" class="page"></div>
+      <div id="page-recu" class="page"></div>
+      <div id="page-acompte" class="page"></div>
+      <div id="page-situation" class="page"></div>
       <div id="page-clients" class="page"></div>
       <div id="page-fournisseurs" class="page"></div>
       <div id="page-articles" class="page"></div>
@@ -396,7 +399,16 @@ function buildSidebar() {
     {s:'PROJETS'},{id:'chantiers',icon:'🏗',label:'Chantiers BTP'},
     {s:'RAPPORTS'},{id:'rapports',icon:'📈',label:'Rapports'},
     {id:'alertes',icon:'🔔',label:'Alertes',badge:true},
-    {id:'parametres',icon:'⚙',label:'Parametres'}
+    {id:'parametres',icon:'⚙',label:'Parametres'},
+    {s:'DOCUMENTS SPÉCIAUX'},
+    {id:'proforma',icon:'📄',label:'Proforma'},
+    {id:'bon_commande',icon:'🛒',label:'Bon de Commande'},
+    {id:'bon_livraison',icon:'🚚',label:'Bon de Livraison'},
+    {id:'avoir',icon:'↩',label:'Avoirs'},
+    {s:'PREMIUM BTP'},
+    {id:'recu',icon:'🧾',label:'Reçu de Paiement'},
+    {id:'acompte',icon:'💰',label:'Demande Acompte'},
+    {id:'situation',icon:'🏗',label:'Situation Travaux'}
   ];
   if (isSuper) { items.push({s:'ADMIN'}); items.push({id:'superadmin',icon:'👑',label:'Super Admin'}); }
   var html = '';
@@ -451,6 +463,13 @@ function renderPage(p) {
   else if (p === 'stock') renderStock();
   else if (p === 'declarations') renderDeclarations();
   else if (p === 'chantiers') renderChantiers();
+  else if (p === 'proforma') renderDocs('proforma','Facture Proforma','📄');
+  else if (p === 'bon_commande') renderDocs('bon_commande','Bon de Commande','🛒');
+  else if (p === 'bon_livraison') renderDocs('bon_livraison','Bon de Livraison','🚚');
+  else if (p === 'avoir') renderDocs('avoir','Avoirs','↩');
+  else if (p === 'recu') renderRecu(document.getElementById('page-recu'));
+  else if (p === 'acompte') renderAcompte(document.getElementById('page-acompte'));
+  else if (p === 'situation') renderSituation(document.getElementById('page-situation'));
 }
 
 async function delTiers(id){delItem('tiers',id,'ce tiers');}
@@ -2153,6 +2172,853 @@ function renderChantiers() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// REÇU DE PAIEMENT — وصل الاستلام
+// ═══════════════════════════════════════════════════════════════
+function renderRecu(el) {
+  if (!el) el = document.getElementById('page-recu');
+  var docs = state.documents.filter(function(d){return d.type==='recu';});
+  var html = '<div class="page-header"><div><div class="page-title">🧾 Reçus de Paiement</div>';
+  html += '<div class="page-sub">'+docs.length+' reçu(s) · REC-'+new Date().getFullYear()+'-XXXX</div></div>';
+  html += '<button class="btn btn-blue" onclick="recuForm()">+ Nouveau reçu</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>';
+  html += '<thead><tr><th>N°</th><th>Date</th><th>Reçu de</th><th>Montant</th><th>Pour facture</th><th>Mode</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) {
+    html += '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucun reçu</td></tr>';
+  } else {
+    docs.forEach(function(d) {
+      html += '<tr>'+
+        '<td style="font-weight:800;color:#1a5fb4;font-family:monospace;font-size:11px">'+d.numero+'</td>'+
+        '<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'+
+        '<td style="font-weight:600">'+(d.tiers_nom||'—')+'</td>'+
+        '<td style="font-weight:800;color:#22c55e">'+fmtMAD(d.total_ttc)+'</td>'+
+        '<td style="font-size:11px;color:#64748b">'+(d.ref_externe||'—')+'</td>'+
+        '<td style="font-size:11px">'+(d.mode_paiement||'—')+'</td>'+
+        '<td>'+badge(d.statut)+'</td>'+
+        '<td><div style="display:flex;gap:4px">'+
+        '<button class="btn btn-ghost btn-sm" onclick="recuForm('+d.id+')">Modifier</button>'+
+        '<button class="btn btn-blue btn-sm" onclick="printRecu('+d.id+')">🖨</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
+        '</div></td></tr>';
+    });
+  }
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function recuForm(id) {
+  var d = id ? state.documents.find(function(x){return x.id==id;}) : {};
+  var tiers = state.tiers;
+  var factures = state.documents.filter(function(x){return x.type==='facture';});
+  var today = new Date().toISOString().split('T')[0];
+  openModal(id ? 'Modifier reçu' : 'Nouveau reçu de paiement 🧾',
+    '<div style="padding:10px;background:#22c55e15;border-radius:8px;margin-bottom:14px;font-size:11px;color:#22c55e">Quittance de paiement conforme Code de Commerce Maroc · Archivage 10 ans</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>N° Reçu (auto si vide)</label><input id="rc_num" value="'+(d.numero||'')+'" placeholder="REC-2026-0001"></div>'+
+    '<div class="form-field"><label>Date *</label><input type="date" id="rc_date" value="'+(d.date_doc||today)+'"></div>'+
+    '<div class="form-field full"><label>Reçu de (Client/Société) *</label><select id="rc_tiers" onchange="rcFillTiers()"><option value="">-- Choisir ou saisir manuellement --</option>'+tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+t.ice+'"'+(d.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field full"><label>Nom/Société (saisie manuelle)</label><input id="rc_nom" value="'+(d.tiers_nom||'')+'" placeholder="Nom complet ou raison sociale"></div>'+
+    '<div class="form-field"><label>ICE Client</label><input id="rc_ice" value="'+(d.tiers_ice||'')+'" placeholder="001234567890123" style="font-family:monospace"></div>'+
+    '<div class="form-field"><label>Adresse client</label><input id="rc_adr" value="'+(d.tiers_adresse||'')+'" placeholder="Rue, Ville"></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:16px 0;padding-top:16px">'+
+    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin-bottom:12px">💵 Montant reçu</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>Montant TTC (MAD) *</label><input type="number" id="rc_mt" value="'+(d.total_ttc||'')+'" step="0.01" placeholder="0.00" oninput="rcUpdateLettre()"></div>'+
+    '<div class="form-field"><label>En règlement de</label><select id="rc_ref"><option value="">-- Facture liée (optionnel) --</option>'+factures.map(function(f){return '<option value="'+f.numero+'"'+(d.ref_externe===f.numero?' selected':'')+'>'+f.numero+' — '+fmtMAD(f.total_ttc)+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field full"><label>Référence manuelle (si hors facture)</label><input id="rc_ref_man" value="'+(d.ref_externe&&!factures.find(function(f){return f.numero===d.ref_externe;})?d.ref_externe:'')+'" placeholder="N° contrat, commande..."></div>'+
+    '</div>'+
+    '<div style="margin-top:10px;padding:12px;background:#06111e;border:1px solid #1e3a5f;border-radius:8px">'+
+    '<div style="font-size:10px;color:#64748b;margin-bottom:4px">EN TOUTES LETTRES</div>'+
+    '<div id="rc_lettre" style="font-style:italic;color:#f1f5f9;font-size:13px;min-height:20px">—</div>'+
+    '</div></div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:16px 0;padding-top:16px">'+
+    '<div style="font-size:12px;font-weight:700;color:#1a5fb4;margin-bottom:12px">💳 Mode de paiement</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>Mode *</label><select id="rc_mode">'+
+    ['virement','cheque','especes','carte','traite','compensation'].map(function(m){var labels={virement:'Virement bancaire',cheque:'Chèque',especes:'Espèces',carte:'Carte bancaire',traite:'Traite/Effet',compensation:'Compensation'};return '<option value="'+m+'"'+(d.mode_paiement===m?' selected':'')+'>'+labels[m]+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="form-field"><label>Référence (N° chèque/virement)</label><input id="rc_ref_pay" value="'+(d.banque||'')+'" placeholder="Ref. CHK-123456 / VIR-789..."></div>'+
+    '<div class="form-field"><label>Banque</label><input id="rc_banque" value="" placeholder="BMCE Maarif, CIH..."></div>'+
+    '<div class="form-field"><label>Date valeur</label><input type="date" id="rc_dval" value="'+(d.date_echeance||today)+'"></div>'+
+    '</div></div>'+
+    '<div class="form-field"><label>Observations</label><textarea id="rc_notes" rows="2">'+(d.notes||'')+'</textarea></div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveRecu('+(id||0)+')">Enregistrer</button>'
+  );
+  setTimeout(rcUpdateLettre, 100);
+}
+
+function rcFillTiers() {
+  var sel = document.getElementById('rc_tiers');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    document.getElementById('rc_nom').value = opt.getAttribute('data-nom')||'';
+    document.getElementById('rc_ice').value = opt.getAttribute('data-ice')||'';
+  }
+}
+
+function rcUpdateLettre() {
+  var mt = +document.getElementById('rc_mt')?.value||0;
+  var el = document.getElementById('rc_lettre');
+  if (el && mt > 0) el.textContent = nombreEnLettres(mt) + ' DIRHAMS';
+  else if (el) el.textContent = '—';
+}
+
+function nombreEnLettres(n) {
+  var u = ['','UN','DEUX','TROIS','QUATRE','CINQ','SIX','SEPT','HUIT','NEUF','DIX','ONZE','DOUZE','TREIZE','QUATORZE','QUINZE','SEIZE','DIX-SEPT','DIX-HUIT','DIX-NEUF'];
+  var d = ['','','VINGT','TRENTE','QUARANTE','CINQUANTE','SOIXANTE','SOIXANTE-DIX','QUATRE-VINGT','QUATRE-VINGT-DIX'];
+  if (n === 0) return 'ZÉRO';
+  if (n < 0) return 'MOINS ' + nombreEnLettres(-n);
+  var res = '';
+  if (n >= 1000000) { res += nombreEnLettres(Math.floor(n/1000000)) + ' MILLION '; n %= 1000000; }
+  if (n >= 1000) { var m = Math.floor(n/1000); res += (m===1?'MILLE':nombreEnLettres(m)+' MILLE')+' '; n %= 1000; }
+  if (n >= 100) { var c = Math.floor(n/100); res += (c===1?'CENT':u[c]+' CENT')+' '; n %= 100; }
+  if (n > 0) {
+    if (n < 20) res += u[n];
+    else { var dd = Math.floor(n/10), uu = n%10; res += d[dd]; if (uu) res += (dd===7||dd===9?'-':'- ')+u[dd===7||dd===9?uu+10:uu]; }
+  }
+  return res.trim();
+}
+
+async function saveRecu(id) {
+  var refSel = document.getElementById('rc_ref').value;
+  var refMan = document.getElementById('rc_ref_man').value;
+  var d = {
+    type:'recu',
+    numero:document.getElementById('rc_num').value||null,
+    date_doc:document.getElementById('rc_date').value,
+    tiers_id:document.getElementById('rc_tiers').value||null,
+    tiers_nom:document.getElementById('rc_nom').value,
+    tiers_ice:document.getElementById('rc_ice').value,
+    tiers_adresse:document.getElementById('rc_adr').value,
+    total_ht:+document.getElementById('rc_mt').value,
+    total_tva:0,
+    total_ttc:+document.getElementById('rc_mt').value,
+    mode_paiement:document.getElementById('rc_mode').value,
+    ref_externe:refSel||refMan,
+    banque:document.getElementById('rc_ref_pay').value,
+    date_echeance:document.getElementById('rc_dval').value,
+    notes:document.getElementById('rc_notes').value,
+    statut:'valide',
+    lignes:[{designation:'Paiement reçu',quantite:1,prix_unit_ht:+document.getElementById('rc_mt').value,taux_tva:0,taux_remise:0,unite:'—'}]
+  };
+  if (!d.date_doc||!d.total_ttc) return toast('Date et montant requis','error');
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage('recu'); toast('Reçu sauvegardé ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printRecu(id) {
+  var d = state.documents.find(function(x){return x.id==id;});
+  if (!d) { try { d = await api('GET','/api/documents/'+id); } catch(e){return;} }
+  var acc = currentAccount;
+  var lettre = d.total_ttc ? nombreEnLettres(Math.round(d.total_ttc)) + ' DIRHAMS' : '—';
+  var modes = {virement:'☑ Virement bancaire',cheque:'☑ Chèque',especes:'☑ Espèces',carte:'☑ Carte bancaire',traite:'☑ Traite/Effet'};
+  var w = window.open('','_blank','width=900,height=750');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
+  '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
+  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+
+  '.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative}'+
+  '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
+  '.header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between;align-items:flex-start}'+
+  '.co-name{font-family:"Playfair Display",serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}'+
+  '.co-det{font-size:9px;color:rgba(255,255,255,0.5);line-height:1.7}'+
+  '.co-det span{color:#e8d5a0;font-family:"DM Mono",monospace}'+
+  '.dt-name{font-family:"Playfair Display",serif;font-size:22px;font-weight:700;color:#c9a84c;text-align:right}'+
+  '.dt-ar{font-size:10px;color:rgba(255,255,255,0.4);text-align:right;margin-top:2px}'+
+  '.dt-num{font-family:"DM Mono",monospace;font-size:10px;color:#e8d5a0;background:rgba(201,168,76,0.12);padding:4px 10px;border-radius:4px;border:1px solid rgba(201,168,76,0.2);display:inline-block;margin-top:6px}'+
+  '.gold-stripe{height:3px;background:linear-gradient(to right,#8b6914,#c9a84c,#e8d5a0,#c9a84c)}'+
+  '.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e0d4}'+
+  '.partie{padding:18px 22px 18px 32px;border-right:1px solid #e5e0d4}'+
+  '.partie:last-child{border-right:none;padding-left:22px}'+
+  '.ptag{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8b6914;margin-bottom:8px;display:flex;align-items:center;gap:6px}'+
+  '.ptag::before{content:"";width:12px;height:2px;background:#c9a84c;border-radius:2px}'+
+  '.pname{font-family:"Playfair Display",serif;font-size:12px;font-weight:600;color:#0d1b2a;margin-bottom:6px}'+
+  '.pdet{font-size:9.5px;color:#6b7280;line-height:1.8}'+
+  '.ice{font-family:"DM Mono",monospace;font-size:9px;background:#f5f3ef;padding:2px 6px;border-radius:3px;border:1px solid #e5e0d4;color:#1b2d42}'+
+  '.meta{background:#faf8f4;padding:10px 32px;display:flex;gap:32px;border-bottom:1px solid #e5e0d4}'+
+  '.ml{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;font-weight:700}'+
+  '.mv{font-size:10px;font-weight:600;color:#0d1b2a;font-family:"DM Mono",monospace;margin-top:1px}'+
+  '.body{padding:20px 32px}'+
+  '.stitle{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}'+
+  '.stitle::after{content:"";flex:1;height:1px;background:#c9a84c;opacity:0.3}'+
+  '.amount-box{text-align:center;padding:20px;background:linear-gradient(135deg,#0d1b2a,#1b2d42);border-radius:8px;margin:16px 0}'+
+  '.ab-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:8px}'+
+  '.ab-amount{font-family:"Playfair Display",serif;font-size:28px;font-weight:700;color:#c9a84c}'+
+  '.ab-cur{font-size:12px;color:rgba(255,255,255,0.5);margin-left:4px}'+
+  '.lettre-box{background:#faf8f4;border:1px dashed #c9a84c;border-radius:4px;padding:12px 16px;margin:12px 0}'+
+  '.ll{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin-bottom:4px}'+
+  '.lv{font-family:"Playfair Display",serif;font-size:11px;font-style:italic;color:#0d1b2a;font-weight:600;line-height:1.4}'+
+  '.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0ece4;font-size:10px}'+
+  '.dr-label{color:#6b7280}'+
+  '.dr-val{font-weight:600;color:#0d1b2a;font-family:"DM Mono",monospace}'+
+  '.mode-boxes{display:flex;gap:8px;margin:10px 0}'+
+  '.mb{flex:1;padding:8px 10px;border:1px solid #e5e0d4;border-radius:4px;font-size:9px;color:#6b7280;background:#faf8f4}'+
+  '.mb.sel{border-color:#0d1b2a;background:#0d1b2a;color:#fff;font-weight:600}'+
+  '.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #e5e0d4;margin-top:12px}'+
+  '.sig{padding:18px 22px 18px 32px;border-right:1px solid #e5e0d4}'+
+  '.sig:last-child{border-right:none;padding-left:22px}'+
+  '.sl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:8px}'+
+  '.sn{font-size:9px;color:#6b7280;margin-bottom:36px}'+
+  '.sline{border-bottom:1px solid #e5e0d4;margin-bottom:4px}'+
+  '.sd{font-size:8.5px;color:#6b7280}'+
+  '.footer{background:#0d1b2a;padding:10px 44px;display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)}'+
+  '.fg{color:#c9a84c;font-weight:600}'+
+  '</style></head><body>'+
+  '<div class="doc">'+
+  '<div class="header">'+
+  '<div><div class="co-name">'+(acc.company_name||'PMEGest.ma')+'</div>'+
+  '<div class="co-det">'+(acc.company_address||'')+(acc.company_city?' · '+acc.company_city:'')+'<br>'+
+  'ICE <span>'+(acc.company_ice||'—')+'</span> · IF <span>'+(acc.company_if||'—')+'</span> · RC <span>'+(acc.company_rc||'—')+'</span></div></div>'+
+  '<div><div class="dt-name">REÇU</div><div class="dt-ar">وصل الاستلام</div><div class="dt-num">'+d.numero+'</div></div>'+
+  '</div>'+
+  '<div class="gold-stripe"></div>'+
+  '<div class="parties">'+
+  '<div class="partie"><div class="ptag">Émetteur</div>'+
+  '<div class="pname">'+(acc.company_name||'—')+'</div>'+
+  '<div class="pdet">ICE <span class="ice">'+(acc.company_ice||'—')+'</span><br>'+(acc.company_address||'')+(acc.company_city?', '+acc.company_city:'')+'<br>Tél: '+(acc.company_phone||'—')+'</div></div>'+
+  '<div class="partie"><div class="ptag">Payeur</div>'+
+  '<div class="pname">'+(d.tiers_nom||'—')+'</div>'+
+  '<div class="pdet">'+(d.tiers_ice?'ICE <span class="ice">'+d.tiers_ice+'</span><br>':'')+(d.tiers_adresse||'')+'</div></div>'+
+  '</div>'+
+  '<div class="meta">'+
+  '<div><div class="ml">N° Reçu</div><div class="mv">'+d.numero+'</div></div>'+
+  '<div><div class="ml">Date</div><div class="mv">'+fmtDate(d.date_doc)+'</div></div>'+
+  '<div><div class="ml">Date valeur</div><div class="mv">'+fmtDate(d.date_echeance)+'</div></div>'+
+  (d.ref_externe?'<div><div class="ml">Pour règlement de</div><div class="mv">'+d.ref_externe+'</div></div>':'')+'</div>'+
+  '<div class="body">'+
+  '<div class="stitle">Montant reçu — المبلغ المستلم</div>'+
+  '<div class="amount-box"><div class="ab-label">Somme reçue</div>'+
+  '<div class="ab-amount">'+r2(d.total_ttc).toLocaleString('fr-MA')+'<span class="ab-cur">MAD</span></div></div>'+
+  '<div class="lettre-box"><div class="ll">En toutes lettres — بالحروف</div>'+
+  '<div class="lv">'+lettre+'</div></div>'+
+  '<div class="stitle" style="margin-top:16px">Mode de paiement</div>'+
+  '<div class="mode-boxes">'+
+  ['virement','cheque','especes','carte','traite'].map(function(m){var labels={virement:'Virement',cheque:'Chèque',especes:'Espèces',carte:'Carte',traite:'Traite'};return '<div class="mb'+(d.mode_paiement===m?' sel':'')+'">'+labels[m]+'</div>';}).join('')+'</div>'+
+  (d.banque?'<div class="detail-row"><span class="dr-label">Référence paiement</span><span class="dr-val">'+d.banque+'</span></div>':'')+
+  (d.notes?'<div style="margin-top:10px;font-size:10px;color:#6b7280">Observations : '+d.notes+'</div>':'')+
+  '</div>'+
+  '<div class="sigs">'+
+  '<div class="sig"><div class="sl">Signature payeur</div><div class="sn">Lu et approuvé</div><div class="sline"></div><div class="sd">Date : _________________</div></div>'+
+  '<div class="sig"><div class="sl">Cachet & Signature</div><div class="sn">'+(acc.company_name||'Émetteur')+'</div>'+
+  (acc.company_cachet?'<img src="'+acc.company_cachet+'" style="max-width:100px;max-height:70px;object-fit:contain">':'<div style="height:60px;border:1px dashed #e5e0d4;border-radius:4px"></div>')+
+  '</div></div>'+
+  '<div class="footer"><span>Ce reçu ne constitue pas une facture fiscale · Archivage 10 ans · Code de Commerce Maroc Art.18</span>'+
+  '<span class="fg">'+acc.company_name+' — '+d.numero+'</span></div>'+
+  '</div></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},600);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMANDE D'ACOMPTE — طلب دفعة مقدمة
+// ═══════════════════════════════════════════════════════════════
+function renderAcompte(el) {
+  if (!el) el = document.getElementById('page-acompte');
+  var docs = state.documents.filter(function(d){return d.type==='acompte';});
+  var html = '<div class="page-header"><div><div class="page-title">💰 Demandes d\'Acompte</div>';
+  html += '<div class="page-sub">'+docs.length+' acompte(s) · ACP-'+new Date().getFullYear()+'-XXXX</div></div>';
+  html += '<button class="btn btn-blue" onclick="acompteForm()">+ Nouvelle demande</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>';
+  html += '<thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Objet</th><th>Montant TTC</th><th>%</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) {
+    html += '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucune demande d\'acompte</td></tr>';
+  } else {
+    docs.forEach(function(d) {
+      html += '<tr>'+
+        '<td style="font-weight:800;color:#1a5fb4;font-family:monospace;font-size:11px">'+d.numero+'</td>'+
+        '<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'+
+        '<td style="font-weight:600">'+(d.tiers_nom||'—')+'</td>'+
+        '<td style="font-size:11px;color:#64748b">'+(d.notes||'—').slice(0,30)+'</td>'+
+        '<td style="font-weight:800;color:#f59e0b">'+fmtMAD(d.total_ttc)+'</td>'+
+        '<td style="font-size:11px;color:#64748b">'+(d.ref_externe||'—')+'</td>'+
+        '<td>'+badge(d.statut)+'</td>'+
+        '<td><div style="display:flex;gap:4px">'+
+        '<button class="btn btn-ghost btn-sm" onclick="acompteForm('+d.id+')">Modifier</button>'+
+        '<button class="btn btn-blue btn-sm" onclick="printAcompte('+d.id+')">🖨</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
+        '</div></td></tr>';
+    });
+  }
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function acompteForm(id) {
+  var d = id ? state.documents.find(function(x){return x.id==id;}) : {};
+  var tiers = state.tiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var devis = state.documents.filter(function(x){return x.type==='devis'||x.type==='facture';});
+  var today = new Date().toISOString().split('T')[0];
+  // Parse echeances stored in notes as JSON if exists
+  var echeances = [{num:1,desc:'Démarrage',pct:30,statut:'current'},{num:2,desc:'Mi-travaux',pct:40,statut:'pending'},{num:3,desc:'Réception provisoire',pct:25,statut:'pending'},{num:4,desc:'Levée réserves',pct:5,statut:'pending'}];
+  openModal(id ? 'Modifier acompte' : 'Nouvelle demande d\'acompte 💰',
+    '<div style="padding:10px;background:#f59e0b15;border-radius:8px;margin-bottom:14px;font-size:11px;color:#f59e0b">Demande d\'acompte conforme CGI Art.145 · Marché de travaux ou prestation</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>N° (auto si vide)</label><input id="ac_num" value="'+(d.numero||'')+'" placeholder="ACP-2026-0001"></div>'+
+    '<div class="form-field"><label>Date *</label><input type="date" id="ac_date" value="'+(d.date_doc||today)+'"></div>'+
+    '<div class="form-field"><label>Échéance paiement *</label><input type="date" id="ac_ech" value="'+(d.date_echeance||'')+'" placeholder="Date limite"></div>'+
+    '<div class="form-field"><label>Statut</label><select id="ac_stat">'+
+    ['brouillon','envoye','valide'].map(function(s){return '<option value="'+s+'"'+(d.statut===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:10px">👤 Client</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Client *</label><select id="ac_tiers" onchange="acFillTiers()"><option value="">-- Choisir client --</option>'+tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+t.ice+'" data-if="'+t.if_fiscal+'" data-adr="'+t.adresse+'" data-ville="'+t.ville+'"'+(d.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field full"><label>Raison sociale (saisie libre)</label><input id="ac_nom" value="'+(d.tiers_nom||'')+'" placeholder="Nom ou raison sociale"></div>'+
+    '<div class="form-field"><label>ICE Client</label><input id="ac_ice" value="'+(d.tiers_ice||'')+'" style="font-family:monospace"></div>'+
+    '<div class="form-field"><label>IF Client</label><input id="ac_if" value="'+(d.tiers_if||'')+'"></div>'+
+    '</div></div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:10px">📋 Contrat / Référence</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>Réf. Contrat/Devis</label><select id="ac_ref"><option value="">-- Lier un devis/contrat --</option>'+devis.map(function(x){return '<option value="'+x.numero+'"'+(d.ref_externe===x.numero?' selected':'')+'>'+x.numero+' — '+fmtMAD(x.total_ttc)+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field"><label>Référence manuelle</label><input id="ac_ref_man" value="" placeholder="N° contrat, marché..."></div>'+
+    '<div class="form-field full"><label>Objet des travaux/prestations *</label><input id="ac_objet" value="'+(d.notes||'')+'" placeholder="Ex: Travaux TCE Résidence Al Wifak - Bloc A"></div>'+
+    '<div class="form-field"><label>Montant total marché HT (MAD)</label><input type="number" id="ac_marche" value="" step="0.01" placeholder="0.00" oninput="acCalc()"></div>'+
+    '<div class="form-field"><label>TVA (%)</label><select id="ac_tva" onchange="acCalc()">'+[0,7,10,14,20].map(function(t){return '<option value="'+t+'"'+(t===20?' selected':'')+'>'+t+'%</option>';}).join('')+'</select></div>'+
+    '</div></div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:10px">💵 Cet acompte</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>N° acompte (1er, 2ème...)</label><input type="number" id="ac_nAcp" value="1" min="1"></div>'+
+    '<div class="form-field"><label>Description acompte</label><input id="ac_desc" value="Démarrage chantier" placeholder="Ex: Démarrage, Mi-travaux..."></div>'+
+    '<div class="form-field"><label>Pourcentage (%)</label><input type="number" id="ac_pct" value="30" min="1" max="100" step="0.01" oninput="acCalc()"></div>'+
+    '<div class="form-field"><label>Mode règlement</label><select id="ac_mode">'+
+    ['virement','cheque','especes'].map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('')+'</select></div>'+
+    '</div>'+
+    '<div id="ac_calc_result" style="margin-top:10px;padding:14px;background:#06111e;border:1px solid #f59e0b30;border-radius:8px">'+
+    '<div style="color:#64748b;font-size:12px">Saisir le montant marché et le pourcentage pour calculer automatiquement</div>'+
+    '</div></div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveAcompte('+(id||0)+')">Enregistrer</button>'
+  );
+}
+
+function acFillTiers() {
+  var sel = document.getElementById('ac_tiers');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    document.getElementById('ac_nom').value = opt.getAttribute('data-nom')||'';
+    document.getElementById('ac_ice').value = opt.getAttribute('data-ice')||'';
+    document.getElementById('ac_if').value = opt.getAttribute('data-if')||'';
+  }
+}
+
+function acCalc() {
+  var marche = +document.getElementById('ac_marche')?.value||0;
+  var pct = +document.getElementById('ac_pct')?.value||0;
+  var tva = +document.getElementById('ac_tva')?.value||20;
+  var el = document.getElementById('ac_calc_result');
+  if (!el) return;
+  if (!marche || !pct) { el.innerHTML = '<div style="color:#64748b;font-size:12px">Saisir montant marché et pourcentage</div>'; return; }
+  var ht = r2(marche * pct / 100);
+  var tvamt = r2(ht * tva / 100);
+  var ttc = r2(ht + tvamt);
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'+
+    '<div style="text-align:center"><div style="font-size:10px;color:#64748b;margin-bottom:4px">MONTANT HT</div>'+
+    '<div style="font-size:18px;font-weight:800;color:#f59e0b">'+fmtMAD(ht)+'</div></div>'+
+    '<div style="text-align:center"><div style="font-size:10px;color:#64748b;margin-bottom:4px">TVA '+tva+'%</div>'+
+    '<div style="font-size:18px;font-weight:800;color:#64748b">'+fmtMAD(tvamt)+'</div></div>'+
+    '<div style="text-align:center"><div style="font-size:10px;color:#64748b;margin-bottom:4px">TOTAL TTC</div>'+
+    '<div style="font-size:18px;font-weight:800;color:#22c55e">'+fmtMAD(ttc)+'</div></div>'+
+    '</div>';
+  // Store for save
+  window._acHT = ht; window._acTVA = tvamt; window._acTTC = ttc;
+}
+
+async function saveAcompte(id) {
+  var marche = +document.getElementById('ac_marche')?.value||0;
+  var pct = +document.getElementById('ac_pct')?.value||0;
+  var tva = +document.getElementById('ac_tva')?.value||20;
+  var ht = window._acHT || r2(marche*pct/100);
+  var tvamt = window._acTVA || r2(ht*tva/100);
+  var ttc = window._acTTC || r2(ht+tvamt);
+  var refSel = document.getElementById('ac_ref')?.value;
+  var refMan = document.getElementById('ac_ref_man')?.value;
+  var d = {
+    type:'acompte',
+    numero:document.getElementById('ac_num')?.value||null,
+    date_doc:document.getElementById('ac_date').value,
+    date_echeance:document.getElementById('ac_ech').value,
+    tiers_id:document.getElementById('ac_tiers').value||null,
+    tiers_nom:document.getElementById('ac_nom').value,
+    tiers_ice:document.getElementById('ac_ice').value,
+    tiers_if:document.getElementById('ac_if')?.value||'',
+    total_ht:ht, total_tva:tvamt, total_ttc:ttc,
+    mode_paiement:document.getElementById('ac_mode').value,
+    ref_externe:refSel||refMan||pct+'%',
+    notes:document.getElementById('ac_objet').value,
+    statut:document.getElementById('ac_stat').value,
+    lignes:[{designation:document.getElementById('ac_desc').value+' ('+pct+'% du marché)',quantite:1,prix_unit_ht:ht,taux_tva:tva,taux_remise:0,unite:'Forfait'}]
+  };
+  if (!d.date_doc||!d.tiers_nom) return toast('Date et client requis','error');
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage('acompte'); toast('Acompte sauvegardé ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printAcompte(id) {
+  var d = state.documents.find(function(x){return x.id==id;});
+  if (!d) { try { d = await api('GET','/api/documents/'+id); } catch(e){return;} }
+  var acc = currentAccount;
+  var w = window.open('','_blank','width=900,height=750');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
+  '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
+  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+
+  '.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
+  '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
+  '.header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between}'+
+  '.co-name{font-family:"Playfair Display",serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}'+
+  '.co-det{font-size:9px;color:rgba(255,255,255,0.5);line-height:1.7}'+
+  '.co-det b{color:#e8d5a0;font-family:"DM Mono",monospace;font-weight:400}'+
+  '.dt-name{font-family:"Playfair Display",serif;font-size:18px;font-weight:700;color:#c9a84c;text-align:right;line-height:1.1}'+
+  '.dt-num{font-family:"DM Mono",monospace;font-size:9px;color:#e8d5a0;background:rgba(201,168,76,0.12);padding:3px 8px;border-radius:3px;border:1px solid rgba(201,168,76,0.2);display:inline-block;margin-top:5px}'+
+  '.gold{height:3px;background:linear-gradient(to right,#8b6914,#c9a84c,#e8d5a0,#c9a84c)}'+
+  '.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e0d4}'+
+  '.pt{padding:16px 20px 16px 32px;border-right:1px solid #e5e0d4}.pt:last-child{border-right:none;padding-left:20px}'+
+  '.ptag{font-size:7.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8b6914;margin-bottom:7px}'+
+  '.pname{font-family:"Playfair Display",serif;font-size:11px;font-weight:600;color:#0d1b2a;margin-bottom:5px}'+
+  '.pdet{font-size:9px;color:#6b7280;line-height:1.7}'+
+  '.meta{background:#faf8f4;padding:8px 32px;display:flex;gap:28px;border-bottom:1px solid #e5e0d4}'+
+  '.ml{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;font-weight:700}'+
+  '.mv{font-size:10px;font-weight:600;color:#0d1b2a;font-family:"DM Mono",monospace;margin-top:1px}'+
+  '.body{padding:18px 32px}'+
+  '.st{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}'+
+  '.st::after{content:"";flex:1;height:1px;background:#c9a84c;opacity:0.3}'+
+  '.ref-box{padding:12px 14px;background:linear-gradient(135deg,#EDF4FF,#F5F0FF);border-left:3px solid #3d5a80;border-radius:0 5px 5px 0;margin-bottom:16px;font-size:10px;line-height:1.8}'+
+  'table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px}'+
+  'thead tr{background:#0d1b2a;color:#fff}'+
+  'th{padding:8px 10px;text-align:left;font-size:8px;font-weight:600;letter-spacing:1px;text-transform:uppercase}'+
+  'th.r{text-align:right}td{padding:9px 10px;border-bottom:1px solid #f0ece4}td.r{text-align:right;font-family:"DM Mono",monospace}'+
+  'tr:nth-child(even){background:#faf8f4}'+
+  '.totals{display:flex;justify-content:flex-end;margin-bottom:16px}'+
+  '.tb{width:260px;border:1px solid #e5e0d4;border-radius:4px;overflow:hidden}'+
+  '.tl{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #f0ece4;font-size:10px}'+
+  '.tl:last-child{border-bottom:none}.tll{color:#6b7280}.tlv{font-family:"DM Mono",monospace;font-weight:500}'+
+  '.tl.hi{background:#0d1b2a;border:none}.tl.hi .tll{color:rgba(255,255,255,0.6);font-size:8.5px;letter-spacing:1px;text-transform:uppercase}'+
+  '.tl.hi .tlv{color:#c9a84c;font-size:13px;font-weight:700}'+
+  '.calendar{border:1px solid #e5e0d4;border-radius:4px;overflow:hidden;margin-bottom:16px}'+
+  '.ch{display:grid;grid-template-columns:28px 1fr 60px 100px 100px;gap:10px;padding:7px 12px;background:#faf8f4;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280}'+
+  '.cr{display:grid;grid-template-columns:28px 1fr 60px 100px 100px;gap:10px;padding:9px 12px;border-top:1px solid #f0ece4;font-size:9.5px;align-items:center}'+
+  '.cr.active{background:linear-gradient(to right,#EBF5FF,#FAFEFF);border-left:3px solid #3d5a80}'+
+  '.cn{width:20px;height:20px;background:#e5e0d4;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6b7280}'+
+  '.cn.a{background:#3d5a80;color:#fff}'+
+  '.cs{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;padding:2px 7px;border-radius:20px}'+
+  '.sp{background:#FFF3CD;color:#856404}.sc{background:#D1E8FF;color:#0C5DA6}.sd{background:#D4EDDA;color:#155724}'+
+  '.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #e5e0d4}'+
+  '.sg{padding:16px 20px 16px 32px;border-right:1px solid #e5e0d4}.sg:last-child{border-right:none;padding-left:20px}'+
+  '.sl{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:7px}'+
+  '.sn{font-size:8.5px;color:#6b7280;margin-bottom:34px}'+
+  '.sline{border-bottom:1px solid #e5e0d4;margin-bottom:4px}.sd2{font-size:8px;color:#6b7280}'+
+  '.footer{background:#0d1b2a;padding:9px 44px;display:flex;justify-content:space-between;font-size:7.5px;color:rgba(255,255,255,0.3)}'+
+  '.fg{color:#c9a84c;font-weight:600}'+
+  '</style></head><body>'+
+  '<div class="doc">'+
+  '<div class="header">'+
+  '<div><div class="co-name">'+(acc.company_name||'PMEGest.ma')+'</div>'+
+  '<div class="co-det">'+(acc.company_address||'')+(acc.company_city?', '+acc.company_city:'')+'<br>'+
+  'ICE <b>'+(acc.company_ice||'—')+'</b> · IF <b>'+(acc.company_if||'—')+'</b> · RC <b>'+(acc.company_rc||'—')+'</b></div></div>'+
+  '<div style="text-align:right"><div class="dt-name">DEMANDE<br>D\'ACOMPTE</div>'+
+  '<div class="dt-num">'+d.numero+'</div></div>'+
+  '</div><div class="gold"></div>'+
+  '<div class="parties">'+
+  '<div class="pt"><div class="ptag">Émetteur</div><div class="pname">'+(acc.company_name||'—')+'</div>'+
+  '<div class="pdet">'+(acc.company_address||'')+(acc.company_city?', '+acc.company_city:'')+'<br>ICE: '+(acc.company_ice||'—')+'</div></div>'+
+  '<div class="pt"><div class="ptag">Client — المستفيد</div><div class="pname">'+(d.tiers_nom||'—')+'</div>'+
+  '<div class="pdet">ICE: '+(d.tiers_ice||'—')+'<br>IF: '+(d.tiers_if||'—')+'</div></div>'+
+  '</div>'+
+  '<div class="meta">'+
+  '<div><div class="ml">N° Acompte</div><div class="mv">'+d.numero+'</div></div>'+
+  '<div><div class="ml">Date</div><div class="mv">'+fmtDate(d.date_doc)+'</div></div>'+
+  '<div><div class="ml">Échéance</div><div class="mv">'+fmtDate(d.date_echeance)+'</div></div>'+
+  (d.ref_externe?'<div><div class="ml">% Acompte</div><div class="mv">'+d.ref_externe+'</div></div>':'')+
+  '</div>'+
+  '<div class="body">'+
+  (d.notes?'<div class="st">Objet du marché</div><div class="ref-box"><strong>'+d.notes+'</strong><br>Réf: '+(d.ref_externe||'—')+'</div>':'')+
+  '<div class="st">Détail de l\'acompte</div>'+
+  '<table><thead><tr><th>Désignation</th><th class="r">Montant HT</th><th class="r">TVA</th><th class="r">Total TTC</th></tr></thead><tbody>'+
+  (d.lignes||[{designation:'Acompte',prix_unit_ht:d.total_ht,taux_tva:((d.total_tva/(d.total_ht||1))*100).toFixed(0)}]).map(function(l){
+    return '<tr><td>'+l.designation+'</td><td class="r">'+r2(l.prix_unit_ht).toLocaleString('fr-MA')+' MAD</td><td class="r">'+l.taux_tva+'%</td><td class="r" style="font-weight:700">'+r2(l.prix_unit_ht*(1+l.taux_tva/100)).toLocaleString('fr-MA')+' MAD</td></tr>';
+  }).join('')+'</tbody></table>'+
+  '<div class="totals"><div class="tb">'+
+  '<div class="tl"><span class="tll">Montant HT</span><span class="tlv">'+r2(d.total_ht).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="tl"><span class="tll">TVA</span><span class="tlv">'+r2(d.total_tva).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="tl hi"><span class="tll">Total TTC à régler</span><span class="tlv">'+r2(d.total_ttc).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '</div></div>'+
+  '<div style="padding:10px 12px;background:#faf8f4;border:1px solid #e5e0d4;border-radius:4px;font-size:10px;margin-bottom:16px">'+
+  '<strong>Mode de règlement :</strong> '+(d.mode_paiement||'Virement bancaire')+
+  (acc.company_rib?'<br><strong>RIB :</strong> '+acc.company_rib+(acc.company_banque?' ('+acc.company_banque+')':''):'')+
+  '</div>'+
+  '</div>'+
+  '<div class="sigs">'+
+  '<div class="sg"><div class="sl">Lu et approuvé — Client</div><div class="sn">Signature + cachet</div><div class="sline"></div><div class="sd2">Date : _________________</div></div>'+
+  '<div class="sg"><div class="sl">Cachet & Signature — Émetteur</div><div class="sn">'+(acc.company_name||'')+'</div>'+
+  (acc.company_cachet?'<img src="'+acc.company_cachet+'" style="max-width:90px;max-height:65px;object-fit:contain">':'<div style="height:55px;border:1px dashed #e5e0d4;border-radius:4px"></div>')+
+  '</div></div>'+
+  '<div class="footer"><span>Conforme CGI Art.145 · TVA régime encaissement Art.103 CGI Maroc · Archivage 10 ans</span>'+
+  '<span class="fg">'+acc.company_name+' — '+d.numero+'</span></div>'+
+  '</div></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},600);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SITUATION DE TRAVAUX — كشف الأشغال
+// ═══════════════════════════════════════════════════════════════
+function renderSituation(el) {
+  if (!el) el = document.getElementById('page-situation');
+  var docs = state.documents.filter(function(d){return d.type==='situation';});
+  var html = '<div class="page-header"><div><div class="page-title">🏗 Situations de Travaux</div>';
+  html += '<div class="page-sub">'+docs.length+' situation(s) · SIT-'+new Date().getFullYear()+'-XXXX</div></div>';
+  html += '<button class="btn btn-blue" onclick="situationForm()">+ Nouvelle situation</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>';
+  html += '<thead><tr><th>N°</th><th>Période</th><th>Chantier / Client</th><th>Total Situation</th><th>Net à payer</th><th>Avancement</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) {
+    html += '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">Aucune situation de travaux</td></tr>';
+  } else {
+    docs.forEach(function(d) {
+      html += '<tr>'+
+        '<td style="font-weight:800;color:#1a5fb4;font-family:monospace;font-size:11px">'+d.numero+'</td>'+
+        '<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'+
+        '<td><div style="font-weight:600">'+(d.tiers_nom||'—')+'</div><div style="font-size:11px;color:#64748b">'+(d.notes||'').slice(0,30)+'</div></td>'+
+        '<td style="font-weight:700;color:#2563eb">'+fmtMAD(d.total_ttc)+'</td>'+
+        '<td style="font-weight:800;color:#22c55e">'+fmtMAD(d.total_ttc - (d.montant_paye||0))+'</td>'+
+        '<td style="font-size:11px">'+(d.ref_externe||'—')+'</td>'+
+        '<td><div style="display:flex;gap:4px">'+
+        '<button class="btn btn-ghost btn-sm" onclick="situationForm('+d.id+')">Modifier</button>'+
+        '<button class="btn btn-blue btn-sm" onclick="printSituation('+d.id+')">🖨</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
+        '</div></td></tr>';
+    });
+  }
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function situationForm(id) {
+  var d = id ? state.documents.find(function(x){return x.id==id;}) : {};
+  var tiers = state.tiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var today = new Date().toISOString().split('T')[0];
+  var lots = window._sitLots || [
+    {num:1,designation:'Gros oeuvre',marche:0,avancement:0},
+    {num:2,designation:'Electricite',marche:0,avancement:0},
+    {num:3,designation:'Plomberie',marche:0,avancement:0}
+  ];
+  window._sitLots = lots;
+
+  openModal(id ? 'Modifier situation' : 'Nouvelle situation de travaux 🏗',
+    '<div style="padding:10px;background:#2563eb15;border-radius:8px;margin-bottom:14px;font-size:11px;color:#2563eb">'+
+    'Situation de travaux BTP · Retenue garantie 5% (Décret n°2-14-394) · Conforme CCAG Travaux Maroc</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field"><label>N° Situation (auto si vide)</label><input id="sit_num" value="'+(d.numero||'')+'" placeholder="SIT-2026-0001"></div>'+
+    '<div class="form-field"><label>N° Situation dans marché</label><input id="sit_nsit" value="1" placeholder="ex: 3"></div>'+
+    '<div class="form-field"><label>Période *</label><input type="date" id="sit_date" value="'+(d.date_doc||today)+'"></div>'+
+    '<div class="form-field"><label>Échéance paiement</label><input type="date" id="sit_ech" value="'+(d.date_echeance||'')+'"></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="font-size:12px;font-weight:700;color:#2563eb;margin-bottom:10px">👤 Maître d\'ouvrage (Client)</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Client *</label><select id="sit_tiers" onchange="sitFillTiers()"><option value="">-- Choisir --</option>'+
+    tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+t.ice+'" data-if="'+t.if_fiscal+'" data-adr="'+t.adresse+'" data-ville="'+t.ville+'"'+(d.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field full"><label>Nom/Société (saisie libre)</label><input id="sit_nom" value="'+(d.tiers_nom||'')+'" placeholder="Maître ouvrage"></div>'+
+    '<div class="form-field"><label>ICE</label><input id="sit_ice" value="'+(d.tiers_ice||'')+'" style="font-family:monospace"></div>'+
+    '<div class="form-field"><label>Représenté par</label><input id="sit_rep" value="" placeholder="M. Alami Mohammed"></div>'+
+    '</div></div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="font-size:12px;font-weight:700;color:#2563eb;margin-bottom:10px">🏗 Chantier & Contrat</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Nom du chantier *</label><input id="sit_chantier" value="'+(d.notes||'')+'" placeholder="Résidence Al Wifak - Bloc A - Casablanca"></div>'+
+    '<div class="form-field"><label>N° Contrat</label><input id="sit_contrat" value="" placeholder="CTR-2026-001"></div>'+
+    '<div class="form-field"><label>Montant total marché HT</label><input type="number" id="sit_marche_total" value="" step="0.01" placeholder="0.00"></div>'+
+    '<div class="form-field"><label>TVA (%)</label><select id="sit_tva">'+[0,7,10,14,20].map(function(t){return '<option value="'+t+'"'+(t===20?' selected':'')+'>'+t+'%</option>';}).join('')+'</select></div>'+
+    '<div class="form-field"><label>Acomptes déjà versés (MAD)</label><input type="number" id="sit_acomptes" value="0" step="0.01" oninput="sitCalc()"></div>'+
+    '<div class="form-field"><label>Retenue garantie (%)</label><input type="number" id="sit_rg" value="5" step="0.01" oninput="sitCalc()"></div>'+
+    '</div></div>'+
+    '<div style="border-top:1px solid #1e3a5f;margin:14px 0;padding-top:14px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+    '<div style="font-size:12px;font-weight:700;color:#2563eb">📋 Lots de travaux</div>'+
+    '<button onclick="sitAddLot()" style="background:#2563eb15;border:1px solid #2563eb40;color:#2563eb;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px">+ Ajouter lot</button>'+
+    '</div>'+
+    '<div id="sit_lots_container">'+sitLotsHTML(lots)+'</div>'+
+    '</div>'+
+    '<div id="sit_recap" style="margin-top:14px;padding:14px;background:#06111e;border:1px solid #2563eb30;border-radius:8px">'+
+    '<div style="color:#64748b;font-size:12px">Saisir les lots pour voir le récapitulatif</div>'+
+    '</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveSituation('+(id||0)+')">Enregistrer</button>'
+  );
+  setTimeout(sitCalc, 150);
+}
+
+function sitLotsHTML(lots) {
+  var html = '<div style="background:#06111e;border-radius:8px;overflow:hidden">';
+  html += '<div style="display:grid;grid-template-columns:32px 2fr 1fr 80px 1fr 32px;gap:8px;padding:8px 10px;background:#0a1628;font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px">'+
+    '<span>#</span><span>Désignation du lot</span><span>Marché HT (MAD)</span><span>Av.%</span><span>Montant situation</span><span></span></div>';
+  lots.forEach(function(lot, i) {
+    html += '<div style="display:grid;grid-template-columns:32px 2fr 1fr 80px 1fr 32px;gap:8px;padding:8px 10px;border-top:1px solid #1e3a5f;align-items:center">'+
+      '<span style="font-size:11px;color:#64748b;font-weight:700">'+lot.num+'</span>'+
+      '<input id="sit_des_'+i+'" value="'+(lot.designation||'')+'" placeholder="Désignation..." style="width:100%;padding:6px 10px;background:#050a14;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;font-size:12px">'+
+      '<input type="number" id="sit_marche_'+i+'" value="'+(lot.marche||'')+'" placeholder="0" step="0.01" style="width:100%;padding:6px 10px;background:#050a14;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;font-size:12px" oninput="sitCalc()">'+
+      '<input type="number" id="sit_av_'+i+'" value="'+(lot.avancement||'')+'" placeholder="0" min="0" max="100" step="1" style="width:100%;padding:6px 10px;background:#050a14;border:1px solid #1e3a5f;border-radius:6px;color:#f59e0b;font-size:12px;font-weight:700" oninput="sitCalc()">'+
+      '<div id="sit_mt_'+i+'" style="font-family:monospace;font-size:12px;color:#22c55e;font-weight:700;padding:6px 10px">—</div>'+
+      '<button onclick="sitRemoveLot('+i+')" style="background:#ef444415;border:1px solid #ef444430;color:#ef4444;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px">✕</button>'+
+    '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function sitAddLot() {
+  var lots = window._sitLots || [];
+  lots.push({num:lots.length+1,designation:'',marche:0,avancement:0});
+  window._sitLots = lots;
+  var c = document.getElementById('sit_lots_container');
+  if (c) c.innerHTML = sitLotsHTML(lots);
+  sitCalc();
+}
+
+function sitRemoveLot(i) {
+  var lots = window._sitLots || [];
+  lots.splice(i,1);
+  lots.forEach(function(l,idx){l.num=idx+1;});
+  window._sitLots = lots;
+  var c = document.getElementById('sit_lots_container');
+  if (c) c.innerHTML = sitLotsHTML(lots);
+  sitCalc();
+}
+
+function sitCalc() {
+  var lots = window._sitLots || [];
+  var totalMarche = 0, totalSit = 0;
+  lots.forEach(function(lot,i){
+    var marche = +document.getElementById('sit_marche_'+i)?.value||0;
+    var av = +document.getElementById('sit_av_'+i)?.value||0;
+    var mt = r2(marche * av / 100);
+    totalMarche += marche; totalSit += mt;
+    var elMt = document.getElementById('sit_mt_'+i);
+    if (elMt) elMt.textContent = mt > 0 ? mt.toLocaleString('fr-MA')+' MAD' : '—';
+  });
+  var tva = +document.getElementById('sit_tva')?.value||20;
+  var acomptes = +document.getElementById('sit_acomptes')?.value||0;
+  var rg_pct = +document.getElementById('sit_rg')?.value||5;
+  var sitHT = r2(totalSit);
+  var sitTVA = r2(sitHT * tva / 100);
+  var sitTTC = r2(sitHT + sitTVA);
+  var rg = r2(sitTTC * rg_pct / 100);
+  var net = r2(sitTTC - acomptes - rg);
+  var avGlobal = totalMarche > 0 ? Math.round(totalSit/totalMarche*100) : 0;
+  window._sitResult = {sitHT,sitTVA,sitTTC,acomptes,rg,net,avGlobal,totalMarche,totalSit,lots};
+  var el = document.getElementById('sit_recap');
+  if (!el) return;
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px">Récapitulatif financier</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div style="padding:10px;background:#ffffff08;border-radius:6px"><div style="font-size:10px;color:#64748b">Total situation HT</div><div style="font-size:16px;font-weight:800;color:#2563eb">'+fmtMAD(sitHT)+'</div></div>'+
+    '<div style="padding:10px;background:#ffffff08;border-radius:6px"><div style="font-size:10px;color:#64748b">TVA '+tva+'%</div><div style="font-size:16px;font-weight:800;color:#f59e0b">'+fmtMAD(sitTVA)+'</div></div>'+
+    '<div style="padding:10px;background:#ffffff08;border-radius:6px"><div style="font-size:10px;color:#64748b">Total TTC situation</div><div style="font-size:16px;font-weight:800;color:#f1f5f9">'+fmtMAD(sitTTC)+'</div></div>'+
+    '<div style="padding:10px;background:#ef444415;border-radius:6px"><div style="font-size:10px;color:#ef4444">- Acomptes versés</div><div style="font-size:16px;font-weight:800;color:#ef4444">'+fmtMAD(acomptes)+'</div></div>'+
+    '<div style="padding:10px;background:#f59e0b15;border-radius:6px"><div style="font-size:10px;color:#f59e0b">- Retenue garantie '+rg_pct+'%</div><div style="font-size:16px;font-weight:800;color:#f59e0b">'+fmtMAD(rg)+'</div></div>'+
+    '<div style="padding:12px;background:linear-gradient(135deg,#22c55e20,#22c55e10);border:1px solid #22c55e30;border-radius:6px"><div style="font-size:10px;color:#22c55e;font-weight:700;text-transform:uppercase">NET À PAYER</div><div style="font-size:20px;font-weight:900;color:#22c55e">'+fmtMAD(net)+'</div></div>'+
+    '</div>'+
+    '<div style="margin-top:10px;background:#ffffff06;border-radius:6px;padding:10px">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:#64748b">Avancement global</span><span style="font-size:14px;font-weight:800;color:#f1f5f9">'+avGlobal+'%</span></div>'+
+    '<div style="height:10px;background:#1e3a5f;border-radius:5px;overflow:hidden"><div style="height:100%;width:'+avGlobal+'%;background:linear-gradient(to right,#1e40af,#2563eb,#60a5fa);border-radius:5px;transition:width 0.5s"></div></div>'+
+    '</div>';
+}
+
+function sitFillTiers() {
+  var sel = document.getElementById('sit_tiers');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    document.getElementById('sit_nom').value = opt.getAttribute('data-nom')||'';
+    document.getElementById('sit_ice').value = opt.getAttribute('data-ice')||'';
+  }
+}
+
+async function saveSituation(id) {
+  sitCalc();
+  var res = window._sitResult || {};
+  var lots = window._sitLots || [];
+  // Rebuild lots from DOM
+  var lignes = lots.map(function(lot,i){
+    var des = document.getElementById('sit_des_'+i)?.value||lot.designation;
+    var marche = +document.getElementById('sit_marche_'+i)?.value||0;
+    var av = +document.getElementById('sit_av_'+i)?.value||0;
+    var mt = r2(marche*av/100);
+    var tva = +document.getElementById('sit_tva')?.value||20;
+    return {designation:des+' ('+av+'%)',quantite:1,prix_unit_ht:mt,taux_tva:tva,taux_remise:0,unite:'Forfait'};
+  }).filter(function(l){return l.prix_unit_ht > 0 || l.designation;});
+  var d = {
+    type:'situation',
+    numero:document.getElementById('sit_num')?.value||null,
+    date_doc:document.getElementById('sit_date').value,
+    date_echeance:document.getElementById('sit_ech')?.value||null,
+    tiers_id:document.getElementById('sit_tiers').value||null,
+    tiers_nom:document.getElementById('sit_nom').value,
+    tiers_ice:document.getElementById('sit_ice')?.value||'',
+    total_ht:res.sitHT||0,
+    total_tva:res.sitTVA||0,
+    total_ttc:res.sitTTC||0,
+    montant_paye:res.acomptes||0,
+    notes:document.getElementById('sit_chantier')?.value||'',
+    ref_externe:(res.avGlobal||0)+'% avancement',
+    mode_paiement:'virement',
+    statut:'brouillon',
+    lignes:lignes.length?lignes:[{designation:'Situation de travaux',quantite:1,prix_unit_ht:res.sitHT||0,taux_tva:+document.getElementById('sit_tva')?.value||20,taux_remise:0,unite:'Forfait'}]
+  };
+  if (!d.date_doc||!d.tiers_nom) return toast('Date et client requis','error');
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    window._sitLots = null;
+    closeModal(); await loadAll(); renderPage('situation'); toast('Situation sauvegardée ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printSituation(id) {
+  var d = state.documents.find(function(x){return x.id==id;});
+  if (!d) { try { d = await api('GET','/api/documents/'+id); } catch(e){return;} }
+  var acc = currentAccount;
+  var lignes = d.lignes || [];
+  var totalMarche = 0;
+  var acomptes = d.montant_paye||0;
+  var rg = r2(d.total_ttc * 0.05);
+  var net = r2(d.total_ttc - acomptes - rg);
+  var avGlobal = d.ref_externe ? parseInt(d.ref_externe)||0 : 0;
+  var w = window.open('','_blank','width=950,height=800');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
+  '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
+  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+
+  '.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
+  '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
+  '.header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between}'+
+  '.co-name{font-family:"Playfair Display",serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}'+
+  '.co-det{font-size:9px;color:rgba(255,255,255,0.5);line-height:1.7}'+
+  '.co-det b{color:#e8d5a0;font-family:"DM Mono",monospace;font-weight:400}'+
+  '.dt-name{font-family:"Playfair Display",serif;font-size:16px;font-weight:700;color:#c9a84c;text-align:right;line-height:1.2}'+
+  '.dt-num{font-family:"DM Mono",monospace;font-size:9px;color:#e8d5a0;background:rgba(201,168,76,0.12);padding:3px 8px;border-radius:3px;border:1px solid rgba(201,168,76,0.2);display:inline-block;margin-top:5px}'+
+  '.gold{height:3px;background:linear-gradient(to right,#8b6914,#c9a84c,#e8d5a0,#c9a84c)}'+
+  '.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e0d4}'+
+  '.pt{padding:16px 20px 16px 32px;border-right:1px solid #e5e0d4}.pt:last-child{border-right:none;padding-left:20px}'+
+  '.ptag{font-size:7.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8b6914;margin-bottom:7px}'+
+  '.pname{font-family:"Playfair Display",serif;font-size:11px;font-weight:600;color:#0d1b2a;margin-bottom:5px}'+
+  '.pdet{font-size:9px;color:#6b7280;line-height:1.7}'+
+  '.meta{background:#faf8f4;padding:8px 32px;display:flex;gap:28px;flex-wrap:wrap;border-bottom:1px solid #e5e0d4}'+
+  '.ml{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;font-weight:700}'+
+  '.mv{font-size:10px;font-weight:600;color:#0d1b2a;font-family:"DM Mono",monospace;margin-top:1px}'+
+  '.body{padding:18px 32px}'+
+  '.st{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}'+
+  '.st::after{content:"";flex:1;height:1px;background:#c9a84c;opacity:0.3}'+
+  'table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px}'+
+  'thead tr{background:#0d1b2a;color:#fff}'+
+  'th{padding:9px 10px;text-align:left;font-size:8px;font-weight:600;letter-spacing:1px;text-transform:uppercase}'+
+  'th.r{text-align:right}th.c{text-align:center}'+
+  'td{padding:9px 10px;border-bottom:1px solid #f0ece4;vertical-align:middle}'+
+  'td.r{text-align:right;font-family:"DM Mono",monospace}td.c{text-align:center}'+
+  'tr:nth-child(even){background:#faf8f4}'+
+  'tr.total-row td{background:#0d1b2a;color:#fff;font-weight:700}'+
+  'tr.total-row td.r{color:#c9a84c}'+
+  '.pb{height:8px;background:#e5e0d4;border-radius:4px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle}'+
+  '.pbf{height:100%;background:linear-gradient(to right,#8b6914,#c9a84c);border-radius:4px}'+
+  '.recap{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #e5e0d4;border-radius:4px;overflow:hidden;margin-bottom:16px}'+
+  '.rl{display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #f0ece4;font-size:10px;grid-column:1/-1}'+
+  '.rl:last-child{border-bottom:none}.rll{color:#6b7280}.rlv{font-family:"DM Mono",monospace;font-weight:500}'+
+  '.rl.neg .rlv{color:#c0392b}.rl.hi{background:#0d1b2a}.rl.hi .rll{color:rgba(255,255,255,0.6);font-size:8px;letter-spacing:1px;text-transform:uppercase}'+
+  '.rl.hi .rlv{color:#c9a84c;font-size:14px;font-weight:700}'+
+  '.av-section{padding:12px 14px;background:#faf8f4;border:1px solid #e5e0d4;border-radius:4px;margin-bottom:16px}'+
+  '.av-header{display:flex;justify-content:space-between;margin-bottom:8px}'+
+  '.av-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700}'+
+  '.av-pct{font-family:"Playfair Display",serif;font-size:22px;font-weight:700;color:#0d1b2a}'+
+  '.big-pb{height:12px;background:#e5e0d4;border-radius:6px;overflow:hidden;margin-bottom:6px}'+
+  '.big-pbf{height:100%;background:linear-gradient(to right,#8b6914,#c9a84c,#f0c060);border-radius:6px}'+
+  '.av-sub{display:flex;justify-content:space-between;font-size:8.5px;color:#6b7280}'+
+  '.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #e5e0d4}'+
+  '.sg{padding:16px 20px 16px 32px;border-right:1px solid #e5e0d4}.sg:last-child{border-right:none;padding-left:20px}'+
+  '.sl{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8b6914;font-weight:700;margin-bottom:7px}'+
+  '.sn{font-size:8.5px;color:#6b7280;margin-bottom:34px}'+
+  '.sline{border-bottom:1px solid #e5e0d4;margin-bottom:4px}.sd{font-size:8px;color:#6b7280}'+
+  '.footer{background:#0d1b2a;padding:9px 44px;display:flex;justify-content:space-between;font-size:7.5px;color:rgba(255,255,255,0.3)}'+
+  '.fg{color:#c9a84c;font-weight:600}'+
+  '</style></head><body>'+
+  '<div class="doc">'+
+  '<div class="header">'+
+  '<div><div class="co-name">'+(acc.company_name||'PMEGest.ma')+'</div>'+
+  '<div class="co-det">'+(acc.company_address||'')+(acc.company_city?', '+acc.company_city:'')+'<br>'+
+  'ICE <b>'+(acc.company_ice||'—')+'</b> · IF <b>'+(acc.company_if||'—')+'</b> · CNSS <b>'+(acc.company_cnss||'—')+'</b></div></div>'+
+  '<div style="text-align:right"><div class="dt-name">SITUATION<br>DE TRAVAUX</div>'+
+  '<div class="dt-num">'+d.numero+'</div></div>'+
+  '</div><div class="gold"></div>'+
+  '<div class="parties">'+
+  '<div class="pt"><div class="ptag">Entreprise</div><div class="pname">'+(acc.company_name||'—')+'</div>'+
+  '<div class="pdet">ICE: '+(acc.company_ice||'—')+'<br>RC: '+(acc.company_rc||'—')+'<br>'+(acc.company_address||'')+(acc.company_city?', '+acc.company_city:'')+'</div></div>'+
+  '<div class="pt"><div class="ptag">Maître d\'ouvrage</div><div class="pname">'+(d.tiers_nom||'—')+'</div>'+
+  '<div class="pdet">ICE: '+(d.tiers_ice||'—')+'<br>'+(d.tiers_adresse||'')+(d.tiers_ville?', '+d.tiers_ville:'')+'</div></div>'+
+  '</div>'+
+  '<div class="meta">'+
+  '<div><div class="ml">N° Situation</div><div class="mv">'+d.numero+'</div></div>'+
+  '<div><div class="ml">Période</div><div class="mv">'+fmtDate(d.date_doc)+'</div></div>'+
+  '<div><div class="ml">Échéance</div><div class="mv">'+fmtDate(d.date_echeance)+'</div></div>'+
+  (d.notes?'<div style="grid-column:1/-1"><div class="ml">Chantier</div><div class="mv" style="font-family:inherit">'+d.notes+'</div></div>':'')+
+  '</div>'+
+  '<div class="body">'+
+  '<div class="st">Décomposition des travaux</div>'+
+  '<table><thead><tr>'+
+  '<th>N°</th><th>Désignation du lot</th><th class="r">Marché HT</th><th class="c">Av.%</th><th class="c">Progression</th><th class="r">Montant situation</th>'+
+  '</tr></thead><tbody>'+
+  lignes.map(function(l,i){
+    var des = l.designation||''; var avMatch = des.match(/\((\d+)%\)/);
+    var av = avMatch ? parseInt(avMatch[1]) : 0;
+    var desClean = des.replace(/\s*\(\d+%\)/,'');
+    return '<tr><td style="color:#64748b;font-weight:700">'+(i+1)+'</td>'+
+      '<td style="font-weight:500">'+desClean+'</td>'+
+      '<td class="r">—</td>'+
+      '<td class="c" style="font-weight:700;color:'+(av>=80?'#22c55e':av>=50?'#f59e0b':'#3b82f6')+'">'+av+'%</td>'+
+      '<td class="c"><div class="pb"><div class="pbf" style="width:'+av+'%"></div></div></td>'+
+      '<td class="r" style="font-weight:700;color:#0d1b2a">'+r2(l.prix_unit_ht).toLocaleString('fr-MA')+' MAD</td>'+
+      '</tr>';
+  }).join('')+
+  '<tr class="total-row">'+
+  '<td colspan="2"><strong>TOTAL SITUATION</strong></td>'+
+  '<td class="r">—</td><td class="c">'+avGlobal+'%</td><td></td>'+
+  '<td class="r">'+r2(d.total_ht).toLocaleString('fr-MA')+' MAD</td>'+
+  '</tr></tbody></table>'+
+  '<div class="st">Avancement global du chantier</div>'+
+  '<div class="av-section">'+
+  '<div class="av-header"><div class="av-label">Progression globale</div><div class="av-pct">'+avGlobal+'%</div></div>'+
+  '<div class="big-pb"><div class="big-pbf" style="width:'+avGlobal+'%"></div></div>'+
+  '<div class="av-sub"><span>Démarrage</span><span>Mi-chantier</span><span>Réception</span></div>'+
+  '</div>'+
+  '<div class="st">Récapitulatif financier</div>'+
+  '<div class="recap">'+
+  '<div class="rl"><span class="rll">Total travaux situation HT</span><span class="rlv">'+r2(d.total_ht).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="rl"><span class="rll">TVA</span><span class="rlv">'+r2(d.total_tva).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="rl"><span class="rll">Total TTC situation</span><span class="rlv">'+r2(d.total_ttc).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="rl neg"><span class="rll">− Acomptes déjà versés</span><span class="rlv">'+r2(acomptes).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="rl neg"><span class="rll">− Retenue de garantie 5% (légal)</span><span class="rlv">'+r2(rg).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '<div class="rl hi"><span class="rll">Net à payer</span><span class="rlv">'+r2(net).toLocaleString('fr-MA')+' MAD</span></div>'+
+  '</div>'+
+  '</div>'+
+  '<div class="sigs">'+
+  '<div class="sg"><div class="sl">Visa Maître d\'œuvre</div><div class="sn">Approuvé et certifié conforme</div>'+
+  '<div class="sline"></div><div class="sd">Nom : _________________ Date : _________</div></div>'+
+  '<div class="sg"><div class="sl">Cachet & Signature entreprise</div><div class="sn">'+(acc.company_name||'')+'</div>'+
+  (acc.company_cachet?'<img src="'+acc.company_cachet+'" style="max-width:90px;max-height:65px;object-fit:contain">':'<div style="height:55px;border:1px dashed #e5e0d4;border-radius:4px"></div>')+
+  '</div></div>'+
+  '<div class="footer"><span>Retenue garantie libérée à réception définitive · Décret n°2-14-394 · CCAG Travaux Maroc · CGI Art.145</span>'+
+  '<span class="fg">'+acc.company_name+' — '+d.numero+'</span></div>'+
+  '</div></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},600);
+}
+
+
 // AUTO LOGIN
 // ═══════════════════════════════════════════════════════════════
 window.onload = async function() {
@@ -2168,6 +3034,1148 @@ window.onload = async function() {
     }
   }
 };
+
+
+// ══════════════════════════════════════════════════════════════════
+// HELPER: NOMBRE EN LETTRES (français)
+// ══════════════════════════════════════════════════════════════════
+function nombreEnLettres(n) {
+  var units = ['','UN','DEUX','TROIS','QUATRE','CINQ','SIX','SEPT','HUIT','NEUF','DIX','ONZE','DOUZE','TREIZE','QUATORZE','QUINZE','SEIZE','DIX-SEPT','DIX-HUIT','DIX-NEUF'];
+  var tens  = ['','','VINGT','TRENTE','QUARANTE','CINQUANTE','SOIXANTE','SOIXANTE-DIX','QUATRE-VINGT','QUATRE-VINGT-DIX'];
+  n = Math.round(n);
+  if (n===0) return 'ZÉRO';
+  if (n<0) return 'MOINS '+nombreEnLettres(-n);
+  var res='';
+  if (n>=1000000){res+=nombreEnLettres(Math.floor(n/1000000))+' MILLION ';n%=1000000;}
+  if (n>=1000){var m=Math.floor(n/1000);res+=(m===1?'MILLE':nombreEnLettres(m)+' MILLE')+' ';n%=1000;}
+  if (n>=100){var c=Math.floor(n/100);res+=(c===1?'CENT':units[c]+' CENT')+' ';n%=100;}
+  if (n>0){
+    if(n<20) res+=units[n];
+    else {
+      var d=Math.floor(n/10),u=n%10;
+      res+=tens[d];
+      if(u){if(d===7||d===9)res+='-'+units[u+10];else res+='-'+units[u];}
+    }
+  }
+  return res.trim();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 1. REÇU DE PAIEMENT  (REC)
+// ══════════════════════════════════════════════════════════════════
+function renderRecu(el) {
+  if (!el) el = document.getElementById('page-recu');
+  var docs = (state.documents||[]).filter(function(d){return d.type==='recu';});
+  var total = docs.reduce(function(a,d){return a+d.total_ttc;},0);
+  var html = '<div class="page-header">'
+    +'<div><div class="page-title">🧾 Reçus de Paiement — وصل الاستلام</div>'
+    +'<div class="page-sub">'+docs.length+' reçu(s) · Total encaissé : '+fmtMAD(total)+'</div></div>'
+    +'<button class="btn btn-blue" onclick="recuForm(null)">+ Nouveau reçu</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>'
+    +'<thead><tr><th>N° Reçu</th><th>Date</th><th>Reçu de</th><th>Pour facture</th><th>Montant</th><th>Mode</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) html += '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:30px">Aucun reçu — أدخل وصل الاستلام الأول</td></tr>';
+  docs.forEach(function(d){
+    html += '<tr>'
+      +'<td style="font-weight:800;color:#2563eb;font-family:monospace;font-size:12px">'+d.numero+'</td>'
+      +'<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'
+      +'<td><div style="font-weight:600">'+(d.tiers_nom||'—')+'</div>'
+        +'<div style="font-size:11px;color:#64748b">'+(d.tiers_ice?'ICE: '+d.tiers_ice:'')+'</div></td>'
+      +'<td style="font-family:monospace;font-size:12px;color:#64748b">'+(d.ref_externe||'—')+'</td>'
+      +'<td style="font-weight:800;color:#22c55e;font-size:14px">'+fmtMAD(d.total_ttc)+'</td>'
+      +'<td style="font-size:12px">'+(d.mode_paiement||'—')+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-ghost btn-sm" onclick="recuForm('+d.id+')">✏️ Modifier</button>'
+        +'<button class="btn btn-blue btn-sm" onclick="printRecu('+d.id+')">🖨 Imprimer</button>'
+        +'<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'
+      +'</div></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function recuForm(id) {
+  var doc = id ? (state.documents||[]).find(function(x){return x.id==id;}) : {};
+  var tiers = (state.tiers||[]);
+  var factures = (state.documents||[]).filter(function(x){return x.type==='facture';});
+  var today = new Date().toISOString().split('T')[0];
+  openModal(id ? 'Modifier reçu — '+doc.numero : '🧾 Nouveau reçu de paiement',
+    // ── Section en-tête ──
+    '<div style="padding:10px 14px;background:#22c55e18;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;margin-bottom:18px;font-size:11px;color:#22c55e">'
+    +'✓ Quittance officielle · Archivage légal 10 ans · Code de Commerce Maroc Art.18</div>'
+
+    // ── Identification ──
+    +'<div style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:12px">📋 Identification</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>N° Reçu (laisser vide = auto)</label>'
+        +'<input id="r_num" value="'+(doc.numero||'')+'" placeholder="REC-2026-0001"></div>'
+      +'<div class="form-field"><label>Date du reçu *</label>'
+        +'<input type="date" id="r_date" value="'+(doc.date_doc||today)+'"></div>'
+    +'</div>'
+
+    // ── Parties ──
+    +'<div style="font-size:13px;font-weight:700;color:#2563eb;margin:16px 0 12px">👤 Payeur</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field full"><label>Choisir client existant (optionnel)</label>'
+        +'<select id="r_tsel" onchange="rFillTiers()">'
+          +'<option value="">— Choisir dans la liste ou saisir manuellement —</option>'
+          +tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+(t.ice||'')+'" data-adr="'+(t.adresse||'')+'" data-ville="'+(t.ville||'')+'"'+(doc.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field full"><label>Nom / Raison sociale *</label>'
+        +'<input id="r_nom" value="'+(doc.tiers_nom||'')+'" placeholder="Nom complet ou raison sociale"></div>'
+      +'<div class="form-field"><label>ICE</label>'
+        +'<input id="r_ice" value="'+(doc.tiers_ice||'')+'" placeholder="001234567890123" style="font-family:monospace"></div>'
+      +'<div class="form-field"><label>Adresse</label>'
+        +'<input id="r_adr" value="'+(doc.tiers_adresse||'')+'" placeholder="Rue, Quartier, Ville"></div>'
+    +'</div>'
+
+    // ── Montant ──
+    +'<div style="font-size:13px;font-weight:700;color:#2563eb;margin:16px 0 12px">💵 Montant reçu</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>Montant (MAD) *</label>'
+        +'<input type="number" id="r_mt" value="'+(doc.total_ttc||'')+'" step="0.01" placeholder="0.00" oninput="rCalcLettre()"></div>'
+      +'<div class="form-field"><label>Pour règlement de (facture)</label>'
+        +'<select id="r_fac">'
+          +'<option value="">— Sélectionner une facture (optionnel) —</option>'
+          +factures.map(function(f){return '<option value="'+f.numero+'"'+(doc.ref_externe===f.numero?' selected':'')+'>'+f.numero+' · '+fmtMAD(f.total_ttc)+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field full"><label>Référence libre (si hors facture)</label>'
+        +'<input id="r_ref" value="'+(doc.notes&&!factures.find(function(f){return f.numero===doc.ref_externe;})?doc.ref_externe:'')
+        +'" placeholder="N° contrat, N° marché, objet du paiement..."></div>'
+    +'</div>'
+    +'<div id="r_lettre_box" style="margin-top:10px;padding:14px 16px;background:#050a14;border:1px solid #22c55e40;border-radius:8px;min-height:44px">'
+      +'<div style="font-size:10px;color:#64748b;margin-bottom:4px;letter-spacing:1px;text-transform:uppercase">En toutes lettres — بالحروف</div>'
+      +'<div id="r_lettre" style="font-style:italic;color:#f1f5f9;font-size:13px">—</div>'
+    +'</div>'
+
+    // ── Mode paiement ──
+    +'<div style="font-size:13px;font-weight:700;color:#2563eb;margin:16px 0 12px">💳 Mode de paiement</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>Mode *</label>'
+        +'<select id="r_mode">'
+          +[['virement','Virement bancaire'],['cheque','Chèque'],['especes','Espèces'],['carte','Carte bancaire'],['traite','Traite / Effet'],['compensation','Compensation']].map(function(m){return '<option value="'+m[0]+'"'+(doc.mode_paiement===m[0]?' selected':'')+'> '+m[1]+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field"><label>N° Chèque / Réf. virement</label>'
+        +'<input id="r_refpay" value="'+(doc.banque||'')+'" placeholder="CHK-123456 · VIR-789..."></div>'
+      +'<div class="form-field"><label>Banque / Agence</label>'
+        +'<input id="r_banque" placeholder="BMCE Maarif, CIH Centre..."></div>'
+      +'<div class="form-field"><label>Date valeur</label>'
+        +'<input type="date" id="r_dval" value="'+(doc.date_echeance||today)+'"></div>'
+    +'</div>'
+    +'<div class="form-field" style="margin-top:12px"><label>Observations</label>'
+      +'<textarea id="r_obs" rows="2" placeholder="Tout complément informatif...">'+(doc.notes||'')+'</textarea></div>'
+    ,
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'
+    +'<button class="btn btn-blue" onclick="saveRecu('+(id||0)+')">💾 Enregistrer</button>'
+  );
+  setTimeout(rCalcLettre, 80);
+}
+
+function rFillTiers() {
+  var sel = document.getElementById('r_tsel');
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  document.getElementById('r_nom').value = opt.getAttribute('data-nom')||'';
+  document.getElementById('r_ice').value = opt.getAttribute('data-ice')||'';
+  document.getElementById('r_adr').value = (opt.getAttribute('data-adr')||'')+(opt.getAttribute('data-ville')?' '+opt.getAttribute('data-ville'):'');
+}
+
+function rCalcLettre() {
+  var mt = +document.getElementById('r_mt')?.value||0;
+  var el = document.getElementById('r_lettre');
+  if (!el) return;
+  if (mt>0) {
+    var ent = Math.floor(mt), dec = Math.round((mt-ent)*100);
+    el.textContent = nombreEnLettres(ent)+' DIRHAMS'+(dec?' ET '+dec+' CENTIMES':'');
+  } else el.textContent = '—';
+}
+
+async function saveRecu(id) {
+  var facSel = document.getElementById('r_fac')?.value;
+  var refLib = document.getElementById('r_ref')?.value;
+  var mt = +document.getElementById('r_mt')?.value||0;
+  if (!document.getElementById('r_date')?.value||!mt) return toast('Date et montant requis','error');
+  var d = {
+    type:'recu', numero:document.getElementById('r_num')?.value||null,
+    date_doc:document.getElementById('r_date').value,
+    date_echeance:document.getElementById('r_dval')?.value||null,
+    tiers_id:document.getElementById('r_tsel')?.value||null,
+    tiers_nom:document.getElementById('r_nom')?.value||'',
+    tiers_ice:document.getElementById('r_ice')?.value||'',
+    tiers_adresse:document.getElementById('r_adr')?.value||'',
+    total_ht:mt, total_tva:0, total_ttc:mt,
+    mode_paiement:document.getElementById('r_mode')?.value||'virement',
+    ref_externe:facSel||refLib||'',
+    banque:document.getElementById('r_refpay')?.value||'',
+    notes:document.getElementById('r_obs')?.value||'',
+    statut:'valide',
+    lignes:[{designation:'Paiement reçu'+(facSel?' — '+facSel:''),quantite:1,prix_unit_ht:mt,taux_tva:0,taux_remise:0,unite:'—'}]
+  };
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage('recu'); toast('Reçu enregistré ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printRecu(id) {
+  var d; try { d = await api('GET','/api/documents/'+id); } catch(e){return toast('Erreur chargement','error');}
+  var acc = currentAccount;
+  var logo = acc.company_logo||'';
+  var cachet = acc.company_cachet||'';
+  var ent = Math.floor(d.total_ttc), dec = Math.round((d.total_ttc-ent)*100);
+  var lettre = nombreEnLettres(ent)+' DIRHAMS'+(dec?' ET '+dec+' CENTIMES':'');
+  var modes = {virement:'Virement bancaire',cheque:'Chèque',especes:'Espèces',carte:'Carte bancaire',traite:'Traite / Effet',compensation:'Compensation'};
+  var w = window.open('','_blank','width=900,height=780');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${d.numero}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F0EDE8;padding:24px;font-size:11px;color:#1A1A2E}
+@media print{body{background:#fff;padding:0}@page{size:A4;margin:1.2cm}}
+.paper{max-width:760px;margin:0 auto;background:#fff;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.13)}
+.paper::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8B6914,#C9A84C,#8B6914)}
+/* HEADER */
+.hdr{background:#0D1B2A;padding:30px 36px 26px 48px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.co-logo{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#1B2D42;flex-shrink:0}
+.co-block{flex:1}
+.co-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
+.co-det{font-size:8.5px;color:rgba(255,255,255,.5);line-height:1.8}
+.co-det em{color:#E8D5A0;font-family:'DM Mono',monospace;font-style:normal}
+.doc-id{text-align:right;flex-shrink:0}
+.doc-type{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#C9A84C;line-height:1}
+.doc-ar{font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;direction:rtl}
+.doc-num{font-family:'DM Mono',monospace;font-size:9.5px;color:#E8D5A0;background:rgba(201,168,76,.12);padding:4px 12px;border-radius:4px;border:1px solid rgba(201,168,76,.2);display:inline-block;margin-top:8px}
+/* GOLD BAR */
+.gold{height:3px;background:linear-gradient(to right,#8B6914,#C9A84C,#E8D5A0,#C9A84C)}
+/* PARTIES */
+.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #E5E0D4}
+.pt{padding:20px 24px 20px 36px;border-right:1px solid #E5E0D4}
+.pt:last-child{border-right:none;padding-left:24px}
+.pt-tag{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8B6914;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.pt-tag::before{content:'';width:14px;height:2px;background:#C9A84C;border-radius:2px}
+.pt-name{font-family:'Playfair Display',serif;font-size:12.5px;font-weight:600;color:#0D1B2A;margin-bottom:7px}
+.pt-det{font-size:9px;color:#6B7280;line-height:1.9}
+.ice{font-family:'DM Mono',monospace;font-size:8.5px;background:#F5F3EF;padding:2px 7px;border-radius:3px;border:1px solid #E5E0D4;color:#1B2D42}
+/* META */
+.meta{background:#FAF8F4;padding:11px 36px;display:flex;gap:36px;border-bottom:1px solid #E5E0D4}
+.ml{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;font-weight:700;margin-bottom:2px}
+.mv{font-size:10px;font-weight:600;color:#0D1B2A;font-family:'DM Mono',monospace}
+/* BODY */
+.body{padding:22px 36px}
+.sec-title{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';flex:1;height:1px;background:#C9A84C;opacity:.3}
+/* AMOUNT BOX */
+.amt-box{background:linear-gradient(135deg,#0D1B2A,#1B2D42);border-radius:10px;padding:22px;text-align:center;margin:14px 0}
+.amt-label{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:10px}
+.amt-val{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:#C9A84C;letter-spacing:-1px}
+.amt-cur{font-size:14px;color:rgba(255,255,255,.4);margin-left:6px;font-family:'DM Sans',sans-serif;font-weight:300}
+/* LETTRES */
+.lettre-box{background:#FAF8F4;border:1px dashed #C9A84C;border-radius:6px;padding:14px 18px;margin:14px 0}
+.l-label{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;font-weight:700;margin-bottom:5px}
+.l-val{font-family:'Playfair Display',serif;font-size:11.5px;font-style:italic;color:#0D1B2A;font-weight:600;line-height:1.5}
+/* DETAIL ROWS */
+.d-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #E5E0D4;border-radius:6px;overflow:hidden;margin:14px 0}
+.d-row{padding:10px 14px;border-bottom:1px solid #E5E0D4;border-right:1px solid #E5E0D4}
+.d-row:nth-child(even){border-right:none}
+.d-row:last-child,.d-row:nth-last-child(2){border-bottom:none}
+.d-label{font-size:7.5px;letter-spacing:1px;text-transform:uppercase;color:#6B7280;font-weight:700;margin-bottom:3px}
+.d-val{font-size:10.5px;font-weight:600;color:#0D1B2A}
+/* MODE BOXES */
+.modes{display:flex;gap:8px;margin:12px 0}
+.mode-b{flex:1;padding:9px 12px;border:1px solid #E5E0D4;border-radius:5px;font-size:9px;color:#6B7280;background:#FAF8F4;text-align:center}
+.mode-b.on{border-color:#0D1B2A;background:#0D1B2A;color:#fff;font-weight:600}
+/* SIGNATURES */
+.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #E5E0D4}
+.sg{padding:22px 24px 22px 36px;border-right:1px solid #E5E0D4}
+.sg:last-child{border-right:none;padding-left:24px}
+.sg-tag{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:8px}
+.sg-name{font-size:9px;color:#6B7280;margin-bottom:42px}
+.sg-line{border-bottom:1px solid #E5E0D4;margin-bottom:5px}
+.sg-date{font-size:8.5px;color:#6B7280}
+.cachet-area{float:right;margin-top:-10px}
+/* FOOTER */
+.ftr{background:#0D1B2A;padding:11px 48px;display:flex;justify-content:space-between;align-items:center;font-size:7.5px;color:rgba(255,255,255,.3);letter-spacing:.3px}
+.fg{color:#C9A84C;font-weight:600}
+</style></head><body>
+<div class="paper">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:14px">
+      ${logo?`<img src="${logo}" class="co-logo">`:``}
+      <div class="co-block">
+        <div class="co-name">${acc.company_name||'Votre Société'}</div>
+        <div class="co-det">
+          ${acc.company_address||''} ${acc.company_city?'· '+acc.company_city:''}<br>
+          ICE <em>${acc.company_ice||'—'}</em> · IF <em>${acc.company_if||'—'}</em> · RC <em>${acc.company_rc||'—'}</em>
+          ${acc.company_phone?'· Tél <em>'+acc.company_phone+'</em>':''}
+        </div>
+      </div>
+    </div>
+    <div class="doc-id">
+      <div class="doc-type">REÇU</div>
+      <div class="doc-ar">وصل الاستلام</div>
+      <div class="doc-num">${d.numero}</div>
+    </div>
+  </div>
+  <div class="gold"></div>
+
+  <div class="parties">
+    <div class="pt">
+      <div class="pt-tag">Émetteur — الطرف الأول</div>
+      <div class="pt-name">${acc.company_name||'—'}</div>
+      <div class="pt-det">
+        ${acc.company_address||''} ${acc.company_city?', '+acc.company_city:''}<br>
+        ICE : <span class="ice">${acc.company_ice||'—'}</span><br>
+        ${acc.company_phone?'Tél : '+acc.company_phone:''}
+      </div>
+    </div>
+    <div class="pt">
+      <div class="pt-tag">Payeur — الطرف الثاني</div>
+      <div class="pt-name">${d.tiers_nom||'—'}</div>
+      <div class="pt-det">
+        ${d.tiers_ice?'ICE : <span class="ice">'+d.tiers_ice+'</span><br>':''}
+        ${d.tiers_adresse||''}
+      </div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div><div class="ml">N° Reçu</div><div class="mv">${d.numero}</div></div>
+    <div><div class="ml">Date d'émission</div><div class="mv">${fmtDate(d.date_doc)}</div></div>
+    <div><div class="ml">Date valeur</div><div class="mv">${fmtDate(d.date_echeance)||'—'}</div></div>
+    ${d.ref_externe?`<div><div class="ml">Pour règlement de</div><div class="mv">${d.ref_externe}</div></div>`:''}
+  </div>
+
+  <div class="body">
+    <div class="sec-title">Montant reçu — المبلغ المستلم</div>
+    <div class="amt-box">
+      <div class="amt-label">Somme reçue en règlement</div>
+      <div class="amt-val">${r2(d.total_ttc).toLocaleString('fr-MA')}<span class="amt-cur">MAD</span></div>
+    </div>
+    <div class="lettre-box">
+      <div class="l-label">En toutes lettres — بالحروف</div>
+      <div class="l-val">${lettre}</div>
+    </div>
+
+    <div class="sec-title">Détail du paiement</div>
+    <div class="d-grid">
+      <div class="d-row"><div class="d-label">Mode de paiement</div><div class="d-val">${modes[d.mode_paiement]||d.mode_paiement||'—'}</div></div>
+      <div class="d-row"><div class="d-label">Référence</div><div class="d-val" style="font-family:'DM Mono',monospace">${d.banque||'—'}</div></div>
+      <div class="d-row"><div class="d-label">Pour règlement de</div><div class="d-val">${d.ref_externe||'—'}</div></div>
+      <div class="d-row"><div class="d-label">Observations</div><div class="d-val">${d.notes||'—'}</div></div>
+    </div>
+
+    <div class="sec-title">Mode de paiement</div>
+    <div class="modes">
+      ${['virement','cheque','especes','carte','traite','compensation'].map(m=>`<div class="mode-b${d.mode_paiement===m?' on':''}">${{virement:'Virement',cheque:'Chèque',especes:'Espèces',carte:'Carte',traite:'Traite',compensation:'Compens.'}[m]}</div>`).join('')}
+    </div>
+  </div>
+
+  <div class="sigs">
+    <div class="sg">
+      <div class="sg-tag">Signature du payeur</div>
+      <div class="sg-name">Lu et approuvé — signature obligatoire</div>
+      <div class="sg-line"></div>
+      <div class="sg-date">Date : ___________________________</div>
+    </div>
+    <div class="sg">
+      <div class="sg-tag">Cachet & Signature — الختم والتوقيع</div>
+      <div class="sg-name">${acc.company_name||''}</div>
+      ${cachet?`<div class="cachet-area"><img src="${cachet}" style="max-width:110px;max-height:75px;object-fit:contain"></div>`:'<div style="height:65px;border:1.5px dashed #E5E0D4;border-radius:6px;margin-bottom:6px"></div>'}
+      <div class="sg-date">Date : ___________________________</div>
+    </div>
+  </div>
+
+  <div class="ftr">
+    <span>Ce reçu ne constitue pas une facture fiscale · Archivage 10 ans · Code de Commerce Maroc Art.18</span>
+    <span class="fg">${acc.company_name||''} — ${d.numero}</span>
+  </div>
+</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(function(){w.print();},700);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// 2. DEMANDE D'ACOMPTE  (ACP)
+// ══════════════════════════════════════════════════════════════════
+function renderAcompte(el) {
+  if (!el) el = document.getElementById('page-acompte');
+  var docs = (state.documents||[]).filter(function(d){return d.type==='acompte';});
+  var html = '<div class="page-header">'
+    +'<div><div class="page-title">💰 Demandes d\'Acompte — طلب دفعة مقدمة</div>'
+    +'<div class="page-sub">'+docs.length+' acompte(s) · Conforme CGI Art.145</div></div>'
+    +'<button class="btn btn-blue" onclick="acompteForm(null)">+ Nouvelle demande</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>'
+    +'<thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Objet</th><th>%</th><th>Montant TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) html += '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:30px">Aucune demande d\'acompte</td></tr>';
+  docs.forEach(function(d){
+    html += '<tr>'
+      +'<td style="font-weight:800;color:#f59e0b;font-family:monospace;font-size:12px">'+d.numero+'</td>'
+      +'<td style="font-size:12px">'+fmtDate(d.date_doc)+'</td>'
+      +'<td style="font-weight:600">'+(d.tiers_nom||'—')+'</td>'
+      +'<td style="font-size:11px;color:#64748b;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(d.notes||'—')+'</td>'
+      +'<td style="font-size:12px;color:#f59e0b;font-weight:700">'+(d.ref_externe||'—')+'</td>'
+      +'<td style="font-weight:800;color:#2563eb">'+fmtMAD(d.total_ttc)+'</td>'
+      +'<td>'+badge(d.statut)+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-ghost btn-sm" onclick="acompteForm('+d.id+')">✏️ Modifier</button>'
+        +'<button class="btn btn-blue btn-sm" onclick="printAcompte('+d.id+')">🖨 Imprimer</button>'
+        +'<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'
+      +'</div></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function acompteForm(id) {
+  var doc = id ? (state.documents||[]).find(function(x){return x.id==id;}) : {};
+  var tiers = (state.tiers||[]).filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var devisList = (state.documents||[]).filter(function(x){return x.type==='devis'||x.type==='proforma';});
+  var today = new Date().toISOString().split('T')[0];
+  // parse stored json if any
+  var stored = {};
+  try { stored = JSON.parse(doc.banque||'{}'); } catch(e){}
+
+  openModal(id ? 'Modifier acompte — '+doc.numero : '💰 Nouvelle demande d\'acompte',
+    '<div style="padding:10px 14px;background:#f59e0b18;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;margin-bottom:18px;font-size:11px;color:#f59e0b">'
+    +'✓ Demande conforme CGI Art.145 · Marché de travaux ou prestation de services</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:12px">📋 En-tête</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>N° (auto si vide)</label><input id="a_num" value="'+(doc.numero||'')+'" placeholder="ACP-2026-0001"></div>'
+      +'<div class="form-field"><label>Date *</label><input type="date" id="a_date" value="'+(doc.date_doc||today)+'"></div>'
+      +'<div class="form-field"><label>Échéance règlement *</label><input type="date" id="a_ech" value="'+(doc.date_echeance||'')+'"></div>'
+      +'<div class="form-field"><label>Statut</label><select id="a_stat">'
+        +['brouillon','envoye','valide'].map(function(s){return '<option value="'+s+'"'+(doc.statut===s?' selected':'')+'>'+({brouillon:'Brouillon',envoye:'Envoyé',valide:'Validé'}[s])+'</option>';}).join('')
+      +'</select></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#f59e0b;margin:16px 0 12px">👤 Client</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field full"><label>Choisir client existant</label>'
+        +'<select id="a_tsel" onchange="aFillTiers()">'
+          +'<option value="">— Choisir dans la liste —</option>'
+          +tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+(t.ice||'')+'" data-if="'+(t.if_fiscal||'')+'" data-adr="'+(t.adresse||'')+'" data-ville="'+(t.ville||'')+'"'+(doc.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field full"><label>Raison sociale *</label><input id="a_nom" value="'+(doc.tiers_nom||'')+'" placeholder="Nom ou raison sociale"></div>'
+      +'<div class="form-field"><label>ICE</label><input id="a_ice" value="'+(doc.tiers_ice||'')+'" style="font-family:monospace" placeholder="001234567890123"></div>'
+      +'<div class="form-field"><label>IF</label><input id="a_if" value="'+(doc.tiers_if||'')+'" placeholder="12345678"></div>'
+      +'<div class="form-field full"><label>Adresse</label><input id="a_adr" value="'+(doc.tiers_adresse||'')+'" placeholder="Rue, Quartier, Ville"></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#f59e0b;margin:16px 0 12px">📋 Contrat / Marché</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>Lier à un devis/proforma</label>'
+        +'<select id="a_devis">'
+          +'<option value="">— Optionnel —</option>'
+          +devisList.map(function(x){return '<option value="'+x.numero+'"'+(doc.notes&&doc.notes.includes(x.numero)?' selected':'')+'>'+x.numero+' · '+fmtMAD(x.total_ttc)+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field"><label>Réf. contrat / marché (libre)</label><input id="a_contrat" value="'+(stored.contrat||'')+'" placeholder="CTR-2026-001"></div>'
+      +'<div class="form-field full"><label>Objet des travaux / prestation *</label><input id="a_objet" value="'+(stored.objet||doc.notes||'')+'" placeholder="Ex: Travaux TCE Résidence Al Wifak — Lot Gros Œuvre"></div>'
+      +'<div class="form-field"><label>Montant total marché HT (MAD)</label><input type="number" id="a_marche" value="'+(stored.marche||'')+'" step="0.01" placeholder="2 500 000.00" oninput="aCalc()"></div>'
+      +'<div class="form-field"><label>TVA applicable (%)</label>'
+        +'<select id="a_tva" onchange="aCalc()">'
+          +[0,7,10,14,20].map(function(t){return '<option value="'+t+'"'+((stored.tva||20)==t?' selected':'')+'>'+t+'%</option>';}).join('')
+        +'</select></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#f59e0b;margin:16px 0 12px">💵 Cet acompte</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>N° de l\'acompte (1er, 2ème...)</label><input type="number" id="a_nacp" value="'+(stored.nacp||1)+'" min="1"></div>'
+      +'<div class="form-field"><label>Description de l\'acompte</label><input id="a_desc" value="'+(stored.desc||'Démarrage des travaux')+'" placeholder="Démarrage, Mi-travaux, Réception..."></div>'
+      +'<div class="form-field"><label>Pourcentage (%) *</label><input type="number" id="a_pct" value="'+(stored.pct||30)+'" min="0.01" max="100" step="0.01" oninput="aCalc()"></div>'
+      +'<div class="form-field"><label>Mode de règlement</label>'
+        +'<select id="a_mode">'
+          +[['virement','Virement bancaire'],['cheque','Chèque'],['especes','Espèces']].map(function(m){return '<option value="'+m[0]+'"'+(doc.mode_paiement===m[0]?' selected':'')+'>'+m[1]+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field"><label>RIB (pour virement)</label><input id="a_rib" value="'+(stored.rib||acc&&acc.company_rib||'')+'" placeholder="007 ...."></div>'
+      +'<div class="form-field"><label>Banque</label><input id="a_banq" value="'+(stored.banq||acc&&acc.company_banque||'')+'" placeholder="BMCE Maarif..."></div>'
+    +'</div>'
+    +'<div id="a_result" style="margin-top:12px;padding:16px;background:#06111e;border:1px solid #f59e0b30;border-radius:10px">'
+      +'<div style="color:#64748b;font-size:12px">Saisir le montant marché et le pourcentage pour calculer</div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#f59e0b;margin:16px 0 12px">📅 Calendrier des acomptes</div>'
+    +'<div id="a_calendar_wrap">'
+      +'<div style="font-size:11px;color:#64748b">Saisir les lignes du calendrier (optionnel)</div>'
+      +'<div id="a_calendar"></div>'
+      +'<button type="button" onclick="aAddEch()" style="margin-top:8px;background:transparent;border:1px dashed #1e3a5f;color:#2563eb;padding:6px 16px;border-radius:8px;cursor:pointer;font-size:12px">+ Ajouter ligne échéancier</button>'
+    +'</div>'
+    ,
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'
+    +'<button class="btn btn-blue" onclick="saveAcompte('+(id||0)+')">💾 Enregistrer</button>'
+  );
+  // Pre-fill stored echeances
+  window._aEch = stored.echeances||[];
+  aRenderCalendar();
+  setTimeout(aCalc,80);
+}
+
+function aFillTiers() {
+  var sel = document.getElementById('a_tsel');
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  document.getElementById('a_nom').value = opt.getAttribute('data-nom')||'';
+  document.getElementById('a_ice').value = opt.getAttribute('data-ice')||'';
+  document.getElementById('a_if').value = opt.getAttribute('data-if')||'';
+  document.getElementById('a_adr').value = (opt.getAttribute('data-adr')||'')+(opt.getAttribute('data-ville')?' '+opt.getAttribute('data-ville'):'');
+}
+
+function aCalc() {
+  var marche = +document.getElementById('a_marche')?.value||0;
+  var pct = +document.getElementById('a_pct')?.value||0;
+  var tva = +document.getElementById('a_tva')?.value||20;
+  var el = document.getElementById('a_result');
+  if (!el) return;
+  if (!marche||!pct) { el.innerHTML='<div style="color:#64748b;font-size:12px">Saisir montant marché et pourcentage</div>'; return; }
+  var ht = r2(marche*pct/100);
+  var tvamt = r2(ht*tva/100);
+  var ttc = r2(ht+tvamt);
+  window._aHT=ht; window._aTVA=tvamt; window._aTTC=ttc;
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">'
+    +'<div><div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">HT</div>'
+      +'<div style="font-size:20px;font-weight:800;color:#f59e0b">'+fmtMAD(ht)+'</div></div>'
+    +'<div><div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">TVA '+tva+'%</div>'
+      +'<div style="font-size:20px;font-weight:800;color:#64748b">'+fmtMAD(tvamt)+'</div></div>'
+    +'<div><div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">TTC NET À PAYER</div>'
+      +'<div style="font-size:20px;font-weight:800;color:#22c55e">'+fmtMAD(ttc)+'</div></div>'
+    +'</div>';
+}
+
+function aAddEch() {
+  window._aEch = window._aEch||[];
+  window._aEch.push({desc:'Nouvelle échéance',pct:0,statut:'pending'});
+  aRenderCalendar();
+}
+
+function aRenderCalendar() {
+  var el = document.getElementById('a_calendar');
+  if (!el) return;
+  var rows = (window._aEch||[]);
+  if (!rows.length) { el.innerHTML=''; return; }
+  var html = '<div style="border:1px solid #1e3a5f;border-radius:8px;overflow:hidden;margin-top:8px">'
+    +'<div style="display:grid;grid-template-columns:28px 1fr 80px 120px;gap:8px;padding:8px 12px;background:#06111e;font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase">'
+      +'<div>#</div><div>Description</div><div>%</div><div>Statut</div></div>';
+  rows.forEach(function(r,i){
+    html += '<div style="display:grid;grid-template-columns:28px 1fr 80px 120px;gap:8px;padding:8px 12px;border-top:1px solid #1e3a5f;align-items:center">'
+      +'<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+(i+1)+'</div>'
+      +'<input value="'+r.desc+'" onchange="window._aEch['+i+'].desc=this.value" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;padding:6px 10px;font-size:12px">'
+      +'<input type="number" value="'+r.pct+'" onchange="window._aEch['+i+'].pct=+this.value" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f59e0b;padding:6px;font-size:12px;font-weight:700" placeholder="%">'
+      +'<select onchange="window._aEch['+i+'].statut=this.value" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;padding:6px 8px;font-size:11px">'
+        +'<option value="pending"'+(r.statut==='pending'?' selected':'')+'>En attente</option>'
+        +'<option value="current"'+(r.statut==='current'?' selected':'')+'>En cours ▶</option>'
+        +'<option value="paid"'+(r.statut==='paid'?' selected':'')+'>Payé ✓</option>'
+      +'</select>'
+    +'</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function saveAcompte(id) {
+  var marche = +document.getElementById('a_marche')?.value||0;
+  var pct = +document.getElementById('a_pct')?.value||0;
+  var tva = +document.getElementById('a_tva')?.value||20;
+  var ht = window._aHT||r2(marche*pct/100);
+  var tvamt = window._aTVA||r2(ht*tva/100);
+  var ttc = window._aTTC||r2(ht+tvamt);
+  if (!document.getElementById('a_date')?.value||!document.getElementById('a_nom')?.value) return toast('Date et client requis','error');
+  var stored = {
+    marche:marche,pct:pct,tva:tva,
+    objet:document.getElementById('a_objet')?.value||'',
+    contrat:document.getElementById('a_contrat')?.value||'',
+    nacp:document.getElementById('a_nacp')?.value||1,
+    desc:document.getElementById('a_desc')?.value||'',
+    rib:document.getElementById('a_rib')?.value||'',
+    banq:document.getElementById('a_banq')?.value||'',
+    echeances:window._aEch||[]
+  };
+  var d = {
+    type:'acompte', numero:document.getElementById('a_num')?.value||null,
+    date_doc:document.getElementById('a_date').value,
+    date_echeance:document.getElementById('a_ech')?.value||null,
+    tiers_id:document.getElementById('a_tsel')?.value||null,
+    tiers_nom:document.getElementById('a_nom').value,
+    tiers_ice:document.getElementById('a_ice')?.value||'',
+    tiers_if:document.getElementById('a_if')?.value||'',
+    tiers_adresse:document.getElementById('a_adr')?.value||'',
+    total_ht:ht, total_tva:tvamt, total_ttc:ttc,
+    mode_paiement:document.getElementById('a_mode')?.value||'virement',
+    ref_externe:pct+'%',
+    notes:document.getElementById('a_objet')?.value||'',
+    banque:JSON.stringify(stored),
+    statut:document.getElementById('a_stat')?.value||'brouillon',
+    lignes:[{designation:(document.getElementById('a_desc')?.value||'Acompte')+' ('+pct+'% du marché HT)',quantite:1,prix_unit_ht:ht,taux_tva:tva,taux_remise:0,unite:'Forfait'}]
+  };
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage('acompte'); toast('Acompte enregistré ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printAcompte(id) {
+  var d; try { d = await api('GET','/api/documents/'+id); } catch(e){return toast('Erreur','error');}
+  var acc = currentAccount;
+  var logo = acc.company_logo||''; var cachet = acc.company_cachet||'';
+  var stored = {}; try { stored = JSON.parse(d.banque||'{}'); } catch(e){}
+  var echeances = stored.echeances||[];
+  var statLabels = {pending:'En attente',current:'En cours ▶',paid:'Payé ✓'};
+  var statColors = {pending:'#FFF3CD:#856404',current:'#D1E8FF:#0C5DA6',paid:'#D4EDDA:#155724'};
+  var w = window.open('','_blank','width=900,height=780');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${d.numero}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F0EDE8;padding:24px;font-size:11px;color:#1A1A2E}
+@media print{body{background:#fff;padding:0}@page{size:A4;margin:1.2cm}}
+.paper{max-width:760px;margin:0 auto;background:#fff;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.13)}
+.paper::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8B6914,#C9A84C,#8B6914)}
+.hdr{background:#0D1B2A;padding:28px 34px 24px 46px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.co-logo{width:52px;height:52px;border-radius:10px;object-fit:contain;background:#1B2D42;flex-shrink:0}
+.co-block{flex:1}.co-name{font-family:'Playfair Display',serif;font-size:14.5px;font-weight:700;color:#fff;margin-bottom:4px}
+.co-det{font-size:8.5px;color:rgba(255,255,255,.5);line-height:1.8}.co-det em{color:#E8D5A0;font-family:'DM Mono',monospace;font-style:normal}
+.doc-id{text-align:right;flex-shrink:0}
+.doc-type{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#C9A84C;line-height:1.2;text-align:right}
+.doc-num{font-family:'DM Mono',monospace;font-size:9px;color:#E8D5A0;background:rgba(201,168,76,.12);padding:3px 10px;border-radius:4px;border:1px solid rgba(201,168,76,.2);display:inline-block;margin-top:7px}
+.doc-dates{font-size:8px;color:rgba(255,255,255,.35);margin-top:4px;text-align:right;line-height:1.6}
+.gold{height:3px;background:linear-gradient(to right,#8B6914,#C9A84C,#E8D5A0,#C9A84C)}
+.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #E5E0D4}
+.pt{padding:18px 22px 18px 34px;border-right:1px solid #E5E0D4}.pt:last-child{border-right:none;padding-left:22px}
+.pt-tag{font-size:7.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8B6914;display:flex;align-items:center;gap:6px;margin-bottom:9px}
+.pt-tag::before{content:'';width:12px;height:2px;background:#C9A84C;border-radius:2px}
+.pt-name{font-family:'Playfair Display',serif;font-size:12px;font-weight:600;color:#0D1B2A;margin-bottom:6px}
+.pt-det{font-size:9px;color:#6B7280;line-height:1.8}.ice{font-family:'DM Mono',monospace;font-size:8px;background:#F5F3EF;padding:2px 6px;border-radius:3px;border:1px solid #E5E0D4}
+.ref-box{margin:16px 34px;padding:13px 16px;background:linear-gradient(135deg,#EDF4FF,#F5F0FF);border-left:3px solid #3D5A80;border-radius:0 6px 6px 0;font-size:10px;line-height:1.9}
+.ref-box strong{color:#0D1B2A;font-size:11px}
+.body{padding:18px 34px}
+.st{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.st::after{content:'';flex:1;height:1px;background:#C9A84C;opacity:.3}
+table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:4px}
+thead tr{background:#0D1B2A;color:#fff}
+th{padding:8px 10px;text-align:left;font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+th.r{text-align:right}td{padding:9px 10px;border-bottom:1px solid #F0ECE4}td.r{text-align:right;font-family:'DM Mono',monospace}
+tr:nth-child(even){background:#FAF8F4}
+.totals-wrap{display:flex;justify-content:flex-end;margin:12px 0 18px}
+.tb{min-width:250px}
+.tl{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #F0ECE4;font-size:10px}
+.tl:last-child{border-bottom:none}.tll{color:#6B7280}.tlv{font-family:'DM Mono',monospace;font-weight:500}
+.tl.hi{background:#0D1B2A;border-radius:6px;border:none;margin-top:4px}
+.tl.hi .tll{color:rgba(255,255,255,.6);font-size:8px;letter-spacing:1px;text-transform:uppercase}
+.tl.hi .tlv{color:#C9A84C;font-size:14px;font-weight:700}
+.rib-box{padding:11px 14px;background:#FAF8F4;border:1px solid #E5E0D4;border-radius:5px;font-size:9.5px;margin-bottom:16px}
+.calendar{border:1px solid #E5E0D4;border-radius:6px;overflow:hidden;margin-bottom:16px}
+.cal-hdr{display:grid;grid-template-columns:28px 1fr 60px 120px;gap:10px;padding:8px 12px;background:#FAF8F4;font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6B7280}
+.cal-row{display:grid;grid-template-columns:28px 1fr 60px 120px;gap:10px;padding:9px 12px;border-top:1px solid #F0ECE4;font-size:10px;align-items:center}
+.cal-row.cur{background:linear-gradient(to right,#EBF5FF,#FAFEFF);border-left:3px solid #3D5A80}
+.cn{width:21px;height:21px;border-radius:50%;background:#E5E0D4;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6B7280}
+.cn.a{background:#3D5A80;color:#fff}
+.cs{display:inline-flex;align-items:center;font-size:8px;font-weight:700;padding:2px 8px;border-radius:20px}
+.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #E5E0D4}
+.sg{padding:20px 22px 20px 34px;border-right:1px solid #E5E0D4}.sg:last-child{border-right:none;padding-left:22px}
+.sg-tag{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:8px}
+.sg-name{font-size:9px;color:#6B7280;margin-bottom:40px}
+.sg-line{border-bottom:1px solid #E5E0D4;margin-bottom:5px}.sg-date{font-size:8.5px;color:#6B7280}
+.ftr{background:#0D1B2A;padding:10px 46px;display:flex;justify-content:space-between;font-size:7.5px;color:rgba(255,255,255,.3)}
+.fg{color:#C9A84C;font-weight:600}
+</style></head><body>
+<div class="paper">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:14px">
+      ${logo?`<img src="${logo}" class="co-logo">`:''}
+      <div class="co-block">
+        <div class="co-name">${acc.company_name||'Votre Société'}</div>
+        <div class="co-det">${acc.company_address||''} ${acc.company_city?'· '+acc.company_city:''}<br>
+        ICE <em>${acc.company_ice||'—'}</em> · IF <em>${acc.company_if||'—'}</em> · RC <em>${acc.company_rc||'—'}</em></div>
+      </div>
+    </div>
+    <div class="doc-id">
+      <div class="doc-type">DEMANDE<br>D'ACOMPTE</div>
+      <div class="doc-num">${d.numero}</div>
+      <div class="doc-dates">Date : ${fmtDate(d.date_doc)}<br>Échéance : ${fmtDate(d.date_echeance)||'—'}</div>
+    </div>
+  </div>
+  <div class="gold"></div>
+  <div class="parties">
+    <div class="pt"><div class="pt-tag">Émetteur</div>
+      <div class="pt-name">${acc.company_name||'—'}</div>
+      <div class="pt-det">${acc.company_address||''} ${acc.company_city?', '+acc.company_city:''}<br>ICE : <span class="ice">${acc.company_ice||'—'}</span></div>
+    </div>
+    <div class="pt"><div class="pt-tag">Client — المستفيد</div>
+      <div class="pt-name">${d.tiers_nom||'—'}</div>
+      <div class="pt-det">ICE : <span class="ice">${d.tiers_ice||'—'}</span><br>IF : ${d.tiers_if||'—'}<br>${d.tiers_adresse||''}</div>
+    </div>
+  </div>
+  ${d.notes||stored.contrat?`<div class="ref-box">
+    <strong>${d.notes||'—'}</strong><br>
+    Réf. contrat / marché : ${stored.contrat||d.ref_externe||'—'} &nbsp;·&nbsp;
+    Montant total marché HT : <strong>${stored.marche?r2(stored.marche).toLocaleString('fr-MA')+' MAD':'—'}</strong>
+  </div>`:''}
+  <div class="body">
+    <div class="st">Détail de l'acompte</div>
+    <table><thead><tr><th>Désignation</th><th class="r">Montant HT</th><th class="r">TVA ${stored.tva||20}%</th><th class="r">Total TTC</th></tr></thead>
+    <tbody>${(d.lignes||[]).map(l=>`<tr>
+      <td>${l.designation}</td>
+      <td class="r">${r2(l.prix_unit_ht).toLocaleString('fr-MA')} MAD</td>
+      <td class="r">${r2(l.prix_unit_ht*l.taux_tva/100).toLocaleString('fr-MA')} MAD</td>
+      <td class="r" style="font-weight:700">${r2(l.prix_unit_ht*(1+l.taux_tva/100)).toLocaleString('fr-MA')} MAD</td>
+    </tr>`).join('')}</tbody></table>
+    <div class="totals-wrap"><div class="tb">
+      <div class="tl"><span class="tll">Montant HT</span><span class="tlv">${r2(d.total_ht).toLocaleString('fr-MA')} MAD</span></div>
+      <div class="tl"><span class="tll">TVA</span><span class="tlv">${r2(d.total_tva).toLocaleString('fr-MA')} MAD</span></div>
+      <div class="tl hi"><span class="tll">Total TTC à régler</span><span class="tlv">${r2(d.total_ttc).toLocaleString('fr-MA')} MAD</span></div>
+    </div></div>
+    ${stored.rib||stored.banq?`<div class="rib-box"><strong>Mode de règlement :</strong> ${d.mode_paiement||'Virement'} &nbsp;·&nbsp; <strong>RIB :</strong> ${stored.rib||'—'} ${stored.banq?'('+stored.banq+')':''}</div>`:''}
+    ${echeances.length?`
+    <div class="st">Calendrier des acomptes</div>
+    <div class="calendar">
+      <div class="cal-hdr"><div>#</div><div>Description</div><div>%</div><div>Statut</div></div>
+      ${echeances.map((e,i)=>{var sc=e.statut==='paid'?'#D4EDDA:#155724':e.statut==='current'?'#D1E8FF:#0C5DA6':'#F3F4F6:#6B7280';var [bg,col]=sc.split(':');return `<div class="cal-row${e.statut==='current'?' cur':''}">
+        <div class="cn${e.statut==='current'?' a':''}">${i+1}</div>
+        <div>${e.desc||'—'}</div>
+        <div style="font-weight:700;color:#3D5A80">${e.pct}%</div>
+        <div><span class="cs" style="background:${bg};color:${col}">${statLabels[e.statut]||e.statut}</span></div>
+      </div>`;}).join('')}
+    </div>`:''}
+  </div>
+  <div class="sigs">
+    <div class="sg"><div class="sg-tag">Lu et approuvé — Client</div>
+      <div class="sg-name">Signature + cachet obligatoires</div>
+      <div class="sg-line"></div><div class="sg-date">Date : ________________________</div>
+    </div>
+    <div class="sg"><div class="sg-tag">Cachet & Signature — الختم والتوقيع</div>
+      <div class="sg-name">${acc.company_name||''}</div>
+      ${cachet?`<img src="${cachet}" style="max-width:105px;max-height:70px;object-fit:contain">`:
+      '<div style="height:60px;border:1.5px dashed #E5E0D4;border-radius:5px;margin-bottom:6px"></div>'}
+      <div class="sg-date">Date : ________________________</div>
+    </div>
+  </div>
+  <div class="ftr">
+    <span>Conforme CGI Art.145 · TVA régime encaissement Art.103 CGI Maroc · Archivage 10 ans</span>
+    <span class="fg">${acc.company_name||''} — ${d.numero}</span>
+  </div>
+</div></body></html>`);
+  w.document.close();
+  setTimeout(function(){w.print();},700);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// 3. SITUATION DE TRAVAUX  (SIT)
+// ══════════════════════════════════════════════════════════════════
+function renderSituation(el) {
+  if (!el) el = document.getElementById('page-situation');
+  var docs = (state.documents||[]).filter(function(d){return d.type==='situation';});
+  var html = '<div class="page-header">'
+    +'<div><div class="page-title">🏗 Situations de Travaux — وضعية الأشغال</div>'
+    +'<div class="page-sub">'+docs.length+' situation(s) · BTP · Décret n°2-14-394</div></div>'
+    +'<button class="btn btn-blue" onclick="situationForm(null)">+ Nouvelle situation</button></div>';
+  html += '<div class="card"><div class="table-wrap"><table>'
+    +'<thead><tr><th>N°</th><th>Période</th><th>Client/MO</th><th>Chantier</th><th>Situation N°</th><th>Total TTC</th><th>Net à payer</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  if (!docs.length) html += '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:30px">Aucune situation de travaux</td></tr>';
+  docs.forEach(function(d){
+    var st={}; try{st=JSON.parse(d.banque||'{}');}catch(e){}
+    html += '<tr>'
+      +'<td style="font-weight:800;color:#22c55e;font-family:monospace;font-size:12px">'+d.numero+'</td>'
+      +'<td style="font-size:12px">'+(st.periode||fmtDate(d.date_doc))+'</td>'
+      +'<td style="font-weight:600">'+(d.tiers_nom||'—')+'</td>'
+      +'<td style="font-size:11px;color:#64748b">'+(st.chantier||d.notes||'—')+'</td>'
+      +'<td style="font-size:12px;color:#2563eb;font-weight:700">N° '+(st.numSit||'1')+' / '+(st.totalSit||'—')+'</td>'
+      +'<td style="font-weight:700">'+fmtMAD(d.total_ttc)+'</td>'
+      +'<td style="font-weight:800;color:#22c55e">'+fmtMAD(st.netAPayer||0)+'</td>'
+      +'<td>'+badge(d.statut)+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-ghost btn-sm" onclick="situationForm('+d.id+')">✏️ Modifier</button>'
+        +'<button class="btn btn-blue btn-sm" onclick="printSituation('+d.id+')">🖨 Imprimer</button>'
+        +'<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'
+      +'</div></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function situationForm(id) {
+  var doc = id ? (state.documents||[]).find(function(x){return x.id==id;}) : {};
+  var tiers = (state.tiers||[]).filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var today = new Date().toISOString().split('T')[0];
+  var st={}; try{st=JSON.parse(doc.banque||'{}');}catch(e){}
+  var lots = st.lots||[{designation:'Gros œuvre',marche:0,avancement:0},{designation:'Électricité',marche:0,avancement:0},{designation:'Plomberie',marche:0,avancement:0}];
+  window._sitLots = lots;
+
+  openModal(id ? 'Modifier situation — '+doc.numero : '🏗 Nouvelle situation de travaux',
+    '<div style="padding:10px 14px;background:#22c55e18;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;margin-bottom:18px;font-size:11px;color:#22c55e">'
+    +'✓ Conforme CCAG Travaux Maroc · Décret n°2-14-394 · Retenue garantie 5%</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:12px">📋 En-tête</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field"><label>N° (auto si vide)</label><input id="s_num" value="'+(doc.numero||'')+'" placeholder="SIT-2026-0001"></div>'
+      +'<div class="form-field"><label>Période (mois concerné)</label><input id="s_periode" value="'+(st.periode||'')+'" placeholder="Mai 2026, Juin 2026..."></div>'
+      +'<div class="form-field"><label>Situation N°</label><input type="number" id="s_numSit" value="'+(st.numSit||1)+'" min="1"></div>'
+      +'<div class="form-field"><label>Sur total (ex: 5)</label><input type="number" id="s_totalSit" value="'+(st.totalSit||'')+'" placeholder="Nb total de situations"></div>'
+      +'<div class="form-field"><label>Date *</label><input type="date" id="s_date" value="'+(doc.date_doc||today)+'"></div>'
+      +'<div class="form-field"><label>Statut</label><select id="s_stat">'
+        +['brouillon','envoye','valide'].map(function(s){return '<option value="'+s+'"'+(doc.statut===s?' selected':'')+'>'+({brouillon:'Brouillon',envoye:'Envoyée',valide:'Validée'}[s])+'</option>';}).join('')
+      +'</select></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#22c55e;margin:16px 0 12px">🏢 Maître d\'ouvrage (Client)</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field full"><label>Choisir client existant</label>'
+        +'<select id="s_tsel" onchange="sFillTiers()">'
+          +'<option value="">— Choisir ou saisir manuellement —</option>'
+          +tiers.map(function(t){return '<option value="'+t.id+'" data-nom="'+t.raison_sociale+'" data-ice="'+(t.ice||'')+'" data-rep="'+(t.contact_nom||'')+'"'+(doc.tiers_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';}).join('')
+        +'</select></div>'
+      +'<div class="form-field full"><label>Raison sociale / Nom *</label><input id="s_nom" value="'+(doc.tiers_nom||'')+'" placeholder="Promoteur, Maître ouvrage..."></div>'
+      +'<div class="form-field"><label>ICE</label><input id="s_ice" value="'+(doc.tiers_ice||'')+'" style="font-family:monospace"></div>'
+      +'<div class="form-field"><label>Représentant</label><input id="s_rep" value="'+(st.rep||'')+'" placeholder="M. Alami Mohamed"></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#22c55e;margin:16px 0 12px">🏗 Chantier</div>'
+    +'<div class="form-grid">'
+      +'<div class="form-field full"><label>Nom du chantier *</label><input id="s_chantier" value="'+(st.chantier||'')+'" placeholder="Résidence Al Wifak — Bloc A — Casablanca"></div>'
+      +'<div class="form-field"><label>N° Contrat</label><input id="s_contrat" value="'+(st.contrat||'')+'" placeholder="CTR-2026-001"></div>'
+      +'<div class="form-field"><label>Montant total marché HT</label><input type="number" id="s_marcheTotal" value="'+(st.marcheTotal||'')+'" step="0.01" placeholder="2 500 000.00"></div>'
+      +'<div class="form-field"><label>Date démarrage</label><input type="date" id="s_demarrage" value="'+(st.demarrage||'')+'"></div>'
+      +'<div class="form-field"><label>Délai (mois)</label><input type="number" id="s_delai" value="'+(st.delai||'')+'" placeholder="18"></div>'
+      +'<div class="form-field"><label>TVA applicable (%)</label>'
+        +'<select id="s_tva" onchange="sCalcTotaux()">'
+          +[0,7,10,14,20].map(function(t){return '<option value="'+t+'"'+((st.tva||14)==t?' selected':'')+'>'+t+'%</option>';}).join('')
+        +'</select></div>'
+    +'</div>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#22c55e;margin:16px 0 12px">📊 Décomposition des travaux</div>'
+    +'<div style="font-size:11px;color:#64748b;margin-bottom:10px">Saisir chaque lot avec son montant marché et son avancement réel</div>'
+    +'<div id="s_lots"></div>'
+    +'<button type="button" onclick="sAddLot()" style="margin-top:8px;background:transparent;border:1px dashed #1e3a5f;color:#22c55e;padding:6px 16px;border-radius:8px;cursor:pointer;font-size:12px">+ Ajouter un lot</button>'
+
+    +'<div style="font-size:13px;font-weight:700;color:#22c55e;margin:16px 0 12px">💰 Récapitulatif financier</div>'
+    +'<div id="s_recap" style="padding:14px;background:#06111e;border:1px solid #22c55e30;border-radius:10px">'
+      +'<div style="color:#64748b;font-size:12px">Saisir les lots pour calculer automatiquement</div>'
+    +'</div>'
+    +'<div class="form-grid" style="margin-top:14px">'
+      +'<div class="form-field"><label>Acomptes déjà versés (MAD TTC)</label><input type="number" id="s_acomptes" value="'+(st.acomptes||0)+'" step="0.01" oninput="sCalcTotaux()"></div>'
+      +'<div class="form-field"><label>Retenue de garantie (%)</label><input type="number" id="s_rg" value="'+(st.rg||5)+'" step="0.01" oninput="sCalcTotaux()"></div>'
+    +'</div>'
+    ,
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'
+    +'<button class="btn btn-blue" onclick="saveSituation('+(id||0)+')">💾 Enregistrer</button>'
+  );
+  sRenderLots();
+  setTimeout(sCalcTotaux,80);
+}
+
+function sFillTiers() {
+  var sel = document.getElementById('s_tsel');
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  document.getElementById('s_nom').value = opt.getAttribute('data-nom')||'';
+  document.getElementById('s_ice').value = opt.getAttribute('data-ice')||'';
+  document.getElementById('s_rep').value = opt.getAttribute('data-rep')||'';
+}
+
+function sAddLot() {
+  window._sitLots = window._sitLots||[];
+  window._sitLots.push({designation:'Nouveau lot',marche:0,avancement:0});
+  sRenderLots(); sCalcTotaux();
+}
+
+function sRenderLots() {
+  var el = document.getElementById('s_lots');
+  if (!el) return;
+  var lots = window._sitLots||[];
+  var html = '<div style="border:1px solid #1e3a5f;border-radius:8px;overflow:hidden">'
+    +'<div style="display:grid;grid-template-columns:30px 2fr 1fr 1fr 1fr auto;gap:8px;padding:8px 12px;background:#06111e;font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase">'
+      +'<div>N°</div><div>Désignation du lot</div><div>Marché HT (MAD)</div><div>Avancement %</div><div>Montant Sit. HT</div><div></div></div>';
+  lots.forEach(function(l,i){
+    var sitMt = r2((l.marche||0)*(l.avancement||0)/100);
+    html += '<div style="display:grid;grid-template-columns:30px 2fr 1fr 1fr 1fr auto;gap:8px;padding:8px 12px;border-top:1px solid #1e3a5f;align-items:center">'
+      +'<div style="font-size:11px;font-weight:700;color:#64748b">'+(i+1)+'</div>'
+      +'<input value="'+(l.designation||'')+'" onchange="window._sitLots['+i+'].designation=this.value" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;padding:6px 10px;font-size:12px">'
+      +'<input type="number" value="'+(l.marche||0)+'" step="0.01" onchange="window._sitLots['+i+'].marche=+this.value;sCalcTotaux()" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f1f5f9;padding:6px;font-size:12px">'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<input type="number" value="'+(l.avancement||0)+'" min="0" max="100" onchange="window._sitLots['+i+'].avancement=+this.value;sCalcTotaux()" style="background:#06111e;border:1px solid #1e3a5f;border-radius:6px;color:#f59e0b;padding:6px;font-size:12px;width:60px">%'
+      +'</div>'
+      +'<div style="font-weight:700;color:#22c55e;font-size:12px;font-family:monospace">'+sitMt.toLocaleString('fr-MA')+'</div>'
+      +'<button onclick="window._sitLots.splice('+i+',1);sRenderLots();sCalcTotaux()" style="background:#ef444420;border:1px solid #ef444440;color:#ef4444;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px">✕</button>'
+    +'</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function sCalcTotaux() {
+  sRenderLots();
+  var lots = window._sitLots||[];
+  var tva = +document.getElementById('s_tva')?.value||14;
+  var acomptes = +document.getElementById('s_acomptes')?.value||0;
+  var rg = +document.getElementById('s_rg')?.value||5;
+  var totalMarcheHT = lots.reduce(function(a,l){return a+r2((l.marche||0));},0);
+  var totalSitHT = lots.reduce(function(a,l){return a+r2((l.marche||0)*(l.avancement||0)/100);},0);
+  var totalSitTVA = r2(totalSitHT*tva/100);
+  var totalSitTTC = r2(totalSitHT+totalSitTVA);
+  var retGarantie = r2(totalSitHT*rg/100);
+  var netAPayer = r2(totalSitTTC - acomptes - retGarantie);
+  var avancementGlobal = totalMarcheHT>0 ? r2(totalSitHT/totalMarcheHT*100) : 0;
+  window._sitTotaux = {totalSitHT,totalSitTVA,totalSitTTC,retGarantie,netAPayer,acomptes,avancementGlobal,tva,rg};
+  var el = document.getElementById('s_recap');
+  if (!el) return;
+  el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a5f;font-size:12px"><span style="color:#64748b">Total Situation HT</span><span style="font-weight:700;font-family:monospace">'+fmtMAD(totalSitHT)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a5f;font-size:12px"><span style="color:#64748b">TVA '+tva+'%</span><span style="font-weight:700;font-family:monospace;color:#f59e0b">'+fmtMAD(totalSitTVA)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a5f;font-size:12px"><span style="color:#64748b">Total TTC Situation</span><span style="font-weight:700;font-family:monospace">'+fmtMAD(totalSitTTC)+'</span></div>'
+    +'</div>'
+    +'<div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a5f;font-size:12px"><span style="color:#ef4444">- Acomptes versés</span><span style="font-weight:700;font-family:monospace;color:#ef4444">- '+fmtMAD(acomptes)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a5f;font-size:12px"><span style="color:#ef4444">- Retenue garantie '+rg+'%</span><span style="font-weight:700;font-family:monospace;color:#ef4444">- '+fmtMAD(retGarantie)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#22c55e20;border-radius:6px;margin-top:6px"><span style="color:#22c55e;font-weight:700">NET À PAYER</span><span style="font-weight:800;font-size:16px;color:#22c55e;font-family:monospace">'+fmtMAD(netAPayer)+'</span></div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span style="color:#64748b">Avancement global du chantier</span><span style="font-weight:700;color:#f1f5f9">'+avancementGlobal+'%</span></div>'
+    +'<div style="height:10px;background:#1e3a5f;border-radius:5px;overflow:hidden"><div style="width:'+avancementGlobal+'%;height:100%;background:linear-gradient(to right,#1a5c38,#22c55e);border-radius:5px"></div></div></div>';
+}
+
+async function saveSituation(id) {
+  if (!document.getElementById('s_date')?.value||!document.getElementById('s_nom')?.value) return toast('Date et client requis','error');
+  var tot = window._sitTotaux||{totalSitHT:0,totalSitTVA:0,totalSitTTC:0,retGarantie:0,netAPayer:0,acomptes:0,avancementGlobal:0,tva:14,rg:5};
+  var stored = {
+    periode:document.getElementById('s_periode')?.value||'',
+    numSit:+document.getElementById('s_numSit')?.value||1,
+    totalSit:document.getElementById('s_totalSit')?.value||'',
+    chantier:document.getElementById('s_chantier')?.value||'',
+    contrat:document.getElementById('s_contrat')?.value||'',
+    marcheTotal:+document.getElementById('s_marcheTotal')?.value||0,
+    demarrage:document.getElementById('s_demarrage')?.value||'',
+    delai:document.getElementById('s_delai')?.value||'',
+    tva:+document.getElementById('s_tva')?.value||14,
+    acomptes:+document.getElementById('s_acomptes')?.value||0,
+    rg:+document.getElementById('s_rg')?.value||5,
+    rep:document.getElementById('s_rep')?.value||'',
+    lots:window._sitLots||[],
+    netAPayer:tot.netAPayer,
+    avancementGlobal:tot.avancementGlobal
+  };
+  var d = {
+    type:'situation', numero:document.getElementById('s_num')?.value||null,
+    date_doc:document.getElementById('s_date').value,
+    tiers_id:document.getElementById('s_tsel')?.value||null,
+    tiers_nom:document.getElementById('s_nom').value,
+    tiers_ice:document.getElementById('s_ice')?.value||'',
+    total_ht:tot.totalSitHT, total_tva:tot.totalSitTVA, total_ttc:tot.totalSitTTC,
+    mode_paiement:'virement',
+    ref_externe:'Sit. N°'+stored.numSit,
+    notes:stored.chantier,
+    banque:JSON.stringify(stored),
+    statut:document.getElementById('s_stat')?.value||'brouillon',
+    lignes:(window._sitLots||[]).filter(function(l){return l.marche>0;}).map(function(l){
+      return {designation:l.designation,quantite:l.avancement/100,prix_unit_ht:l.marche,taux_tva:stored.tva,taux_remise:0,unite:'%'};
+    })
+  };
+  if (!d.lignes.length) d.lignes = [{designation:'Situation de travaux',quantite:1,prix_unit_ht:tot.totalSitHT,taux_tva:stored.tva,taux_remise:0,unite:'Forfait'}];
+  try {
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage('situation'); toast('Situation enregistrée ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function printSituation(id) {
+  var d; try { d = await api('GET','/api/documents/'+id); } catch(e){return toast('Erreur','error');}
+  var acc = currentAccount;
+  var logo = acc.company_logo||''; var cachet = acc.company_cachet||'';
+  var st={}; try{st=JSON.parse(d.banque||'{}');}catch(e){}
+  var lots = st.lots||[];
+  var avPct = st.avancementGlobal||0;
+  var w = window.open('','_blank','width=950,height=820');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${d.numero}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F0EDE8;padding:24px;font-size:11px;color:#1A1A2E}
+@media print{body{background:#fff;padding:0}@page{size:A4;margin:1cm}}
+.paper{max-width:760px;margin:0 auto;background:#fff;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.13)}
+.paper::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8B6914,#C9A84C,#8B6914)}
+.hdr{background:#0D1B2A;padding:26px 32px 22px 44px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.co-logo{width:50px;height:50px;border-radius:10px;object-fit:contain;background:#1B2D42;flex-shrink:0}
+.co-name{font-family:'Playfair Display',serif;font-size:13.5px;font-weight:700;color:#fff;margin-bottom:3px}
+.co-det{font-size:8px;color:rgba(255,255,255,.45);line-height:1.8}
+.co-det em{color:#E8D5A0;font-family:'DM Mono',monospace;font-style:normal}
+.doc-id{text-align:right;flex-shrink:0}
+.doc-type{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#C9A84C;line-height:1.25;text-align:right}
+.doc-num{font-family:'DM Mono',monospace;font-size:8.5px;color:#E8D5A0;background:rgba(201,168,76,.12);padding:3px 9px;border-radius:3px;border:1px solid rgba(201,168,76,.2);display:inline-block;margin-top:6px}
+.doc-det{font-size:7.5px;color:rgba(255,255,255,.3);margin-top:4px;text-align:right;line-height:1.6}
+.gold{height:3px;background:linear-gradient(to right,#8B6914,#C9A84C,#E8D5A0,#C9A84C)}
+.parties{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #E5E0D4}
+.pt{padding:15px 20px 15px 32px;border-right:1px solid #E5E0D4}.pt:last-child{border-right:none;padding-left:20px}
+.pt-tag{font-size:7.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8B6914;display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.pt-tag::before{content:'';width:12px;height:2px;background:#C9A84C;border-radius:2px}
+.pt-name{font-family:'Playfair Display',serif;font-size:11.5px;font-weight:600;color:#0D1B2A;margin-bottom:5px}
+.pt-det{font-size:8.5px;color:#6B7280;line-height:1.8}
+.meta-strip{background:#FAF8F4;padding:10px 32px;display:flex;gap:28px;border-bottom:1px solid #E5E0D4;flex-wrap:wrap}
+.ml{font-size:7px;letter-spacing:1.5px;text-transform:uppercase;color:#6B7280;font-weight:700;margin-bottom:2px}
+.mv{font-size:9.5px;font-weight:600;color:#0D1B2A;font-family:'DM Mono',monospace}
+.chantier-box{margin:14px 32px;padding:12px 16px;background:linear-gradient(135deg,#EDF4FF,#F0FDF4);border-left:3px solid #22c55e;border-radius:0 6px 6px 0;font-size:10px;line-height:1.8}
+.chantier-box strong{color:#0D1B2A;font-size:11px;font-family:'Playfair Display',serif}
+.body{padding:16px 32px}
+.st{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.st::after{content:'';flex:1;height:1px;background:#C9A84C;opacity:.3}
+table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:4px}
+thead tr{background:#0D1B2A;color:#fff}
+th{padding:8px 9px;text-align:left;font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+th.r{text-align:right}td{padding:8px 9px;border-bottom:1px solid #F0ECE4;vertical-align:middle}
+td.r{text-align:right;font-family:'DM Mono',monospace}tr:nth-child(even){background:#FAF8F4}
+.prog-wrap{background:#E5E0D4;border-radius:4px;height:7px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(to right,#8B6914,#C9A84C)}
+.totals-section{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.tl{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F0ECE4;font-size:9.5px}
+.tl:last-child{border-bottom:none}.tll{color:#6B7280}.tlv{font-family:'DM Mono',monospace;font-weight:500}
+.tl.neg .tlv{color:#C0392B}.tl.net{background:#0D1B2A;padding:10px 12px;border-radius:6px;border:none;margin-top:6px}
+.tl.net .tll{color:rgba(255,255,255,.6);font-size:7.5px;letter-spacing:1px;text-transform:uppercase}
+.tl.net .tlv{color:#C9A84C;font-size:14px;font-weight:700}
+.avancement-box{padding:14px 16px;background:#FAF8F4;border:1px solid #E5E0D4;border-radius:6px}
+.av-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.av-title{font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6914;font-weight:700}
+.av-pct{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#0D1B2A}
+.av-bar{height:10px;background:#E5E0D4;border-radius:5px;overflow:hidden;margin-bottom:7px}
+.av-fill{height:100%;border-radius:5px;background:linear-gradient(to right,#8B6914,#C9A84C,#F0C060)}
+.av-sub{display:flex;justify-content:space-between;font-size:8px;color:#6B7280}
+.sigs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #E5E0D4;margin-top:12px}
+.sg{padding:18px 20px 18px 32px;border-right:1px solid #E5E0D4}.sg:last-child{border-right:none;padding-left:20px}
+.sg-tag{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#8B6914;font-weight:700;margin-bottom:7px}
+.sg-sub{font-size:8.5px;color:#6B7280;margin-bottom:38px}
+.sg-line{border-bottom:1px solid #E5E0D4;margin-bottom:5px}.sg-date{font-size:8px;color:#6B7280}
+.ftr{background:#0D1B2A;padding:9px 44px;display:flex;justify-content:space-between;font-size:7.5px;color:rgba(255,255,255,.3)}
+.fg{color:#C9A84C;font-weight:600}
+</style></head><body>
+<div class="paper">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:13px">
+      ${logo?`<img src="${logo}" class="co-logo">`:''}
+      <div>
+        <div class="co-name">${acc.company_name||'Votre Société'}</div>
+        <div class="co-det">${acc.company_address||''} ${acc.company_city?'· '+acc.company_city:''}<br>
+        ICE <em>${acc.company_ice||'—'}</em> · IF <em>${acc.company_if||'—'}</em> · RC <em>${acc.company_rc||'—'}</em>
+        ${acc.company_cnss?'· CNSS <em>'+acc.company_cnss+'</em>':''}</div>
+      </div>
+    </div>
+    <div class="doc-id">
+      <div class="doc-type">SITUATION<br>DE TRAVAUX</div>
+      <div class="doc-num">${d.numero}</div>
+      <div class="doc-det">
+        Situation N° ${st.numSit||'—'} / ${st.totalSit||'—'}<br>
+        Période : ${st.periode||fmtDate(d.date_doc)}<br>
+        Date : ${fmtDate(d.date_doc)}
+      </div>
+    </div>
+  </div>
+  <div class="gold"></div>
+
+  <div class="parties">
+    <div class="pt"><div class="pt-tag">Entreprise</div>
+      <div class="pt-name">${acc.company_name||'—'}</div>
+      <div class="pt-det">${acc.company_address||''} ${acc.company_city?', '+acc.company_city:''}<br>ICE : ${acc.company_ice||'—'}</div>
+    </div>
+    <div class="pt"><div class="pt-tag">Maître d'ouvrage — رب العمل</div>
+      <div class="pt-name">${d.tiers_nom||'—'}</div>
+      <div class="pt-det">ICE : ${d.tiers_ice||'—'}${st.rep?'<br>Représenté par : '+st.rep:''}</div>
+    </div>
+  </div>
+
+  <div class="meta-strip">
+    <div><div class="ml">N° Situation</div><div class="mv">${d.numero}</div></div>
+    <div><div class="ml">Période</div><div class="mv">${st.periode||'—'}</div></div>
+    ${st.contrat?`<div><div class="ml">N° Contrat</div><div class="mv">${st.contrat}</div></div>`:''}
+    ${st.demarrage?`<div><div class="ml">Démarrage</div><div class="mv">${fmtDate(st.demarrage)}</div></div>`:''}
+    ${st.delai?`<div><div class="ml">Délai</div><div class="mv">${st.delai} mois</div></div>`:''}
+    ${st.marcheTotal?`<div><div class="ml">Marché total HT</div><div class="mv">${r2(st.marcheTotal).toLocaleString('fr-MA')} MAD</div></div>`:''}
+  </div>
+
+  ${st.chantier?`<div class="chantier-box"><strong>${st.chantier}</strong>${st.contrat?'<br>Contrat N° : '+st.contrat:''}</div>`:''}
+
+  <div class="body">
+    <div class="st">Décomposition des travaux — تفاصيل الأشغال</div>
+    <table>
+      <thead><tr>
+        <th>N°</th><th>Désignation du lot</th>
+        <th class="r">Montant marché HT</th>
+        <th class="r">Avancement</th>
+        <th class="r">Montant situation HT</th>
+      </tr></thead>
+      <tbody>
+        ${lots.map((l,i)=>{
+          var sitMt=r2((l.marche||0)*(l.avancement||0)/100);
+          var pct=l.avancement||0;
+          return `<tr>
+            <td style="color:#6B7280;font-weight:600">${i+1}</td>
+            <td style="font-weight:500">${l.designation||'—'}</td>
+            <td class="r">${r2(l.marche||0).toLocaleString('fr-MA')} MAD</td>
+            <td>
+              <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
+              <span style="font-weight:700;color:${pct>=75?'#155724':pct>=40?'#856404':'#6B7280'}">${pct}%</span>
+            </td>
+            <td class="r" style="font-weight:700">${sitMt.toLocaleString('fr-MA')} MAD</td>
+          </tr>`;
+        }).join('')}
+        <tr style="background:#0D1B2A;color:#fff;font-weight:700">
+          <td colspan="2" style="color:rgba(255,255,255,.7);font-size:8px;letter-spacing:1px;text-transform:uppercase">TOTAL</td>
+          <td class="r" style="color:#C9A84C">${r2(lots.reduce((a,l)=>a+(l.marche||0),0)).toLocaleString('fr-MA')} MAD</td>
+          <td style="color:#C9A84C;font-weight:700">${avPct}%</td>
+          <td class="r" style="color:#C9A84C">${r2(d.total_ht).toLocaleString('fr-MA')} MAD</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="totals-section">
+      <div>
+        <div class="tl"><span class="tll">Total situation HT</span><span class="tlv">${r2(d.total_ht).toLocaleString('fr-MA')} MAD</span></div>
+        <div class="tl"><span class="tll">TVA ${st.tva||14}%</span><span class="tlv">${r2(d.total_tva).toLocaleString('fr-MA')} MAD</span></div>
+        <div class="tl"><span class="tll">Total TTC situation</span><span class="tlv">${r2(d.total_ttc).toLocaleString('fr-MA')} MAD</span></div>
+        <div class="tl neg"><span class="tll">— Acomptes versés</span><span class="tlv">- ${r2(st.acomptes||0).toLocaleString('fr-MA')} MAD</span></div>
+        <div class="tl neg"><span class="tll">— Retenue garantie ${st.rg||5}%</span><span class="tlv">- ${r2(st.netAPayer?d.total_ttc-(st.acomptes||0)-st.netAPayer:0).toLocaleString('fr-MA')} MAD</span></div>
+        <div class="tl net"><span class="tll">Net à payer</span><span class="tlv">${r2(st.netAPayer||0).toLocaleString('fr-MA')} MAD</span></div>
+      </div>
+      <div class="avancement-box">
+        <div class="av-hdr">
+          <div class="av-title">Avancement global — التقدم العام</div>
+          <div class="av-pct">${avPct}%</div>
+        </div>
+        <div class="av-bar"><div class="av-fill" style="width:${avPct}%"></div></div>
+        <div class="av-sub">
+          <span>0%</span>
+          <span>${st.demarrage?'Démarrage : '+fmtDate(st.demarrage):''}</span>
+          <span>100%</span>
+        </div>
+        ${st.delai?`<div style="margin-top:8px;font-size:8.5px;color:#6B7280">Délai contractuel : <strong>${st.delai} mois</strong></div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <div class="sigs">
+    <div class="sg">
+      <div class="sg-tag">Visa Maître d'ouvrage</div>
+      <div class="sg-sub">Signature + cachet + date</div>
+      <div class="sg-line"></div>
+      <div class="sg-date">Date : _______________________ &nbsp; Nom : _______________________</div>
+    </div>
+    <div class="sg">
+      <div class="sg-tag">Visa Entreprise — الختم والتوقيع</div>
+      <div class="sg-sub">${acc.company_name||''}</div>
+      ${cachet?`<img src="${cachet}" style="max-width:100px;max-height:68px;object-fit:contain">`:
+      '<div style="height:58px;border:1.5px dashed #E5E0D4;border-radius:5px;margin-bottom:5px"></div>'}
+      <div class="sg-date">Date : _______________________</div>
+    </div>
+  </div>
+
+  <div class="ftr">
+    <span>Retenue garantie libérée à réception définitive · Décret n°2-14-394 · CCAG Travaux Maroc · CGI Art.145</span>
+    <span class="fg">${acc.company_name||''} — ${d.numero}</span>
+  </div>
+</div></body></html>`);
+  w.document.close();
+  setTimeout(function(){w.print();},700);
+}
+
 </script>
 </body>
 </html>

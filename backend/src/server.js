@@ -371,7 +371,7 @@ function calculerBulletin(d) {
 
 function nextNumero(aid, type) {
   const y=new Date().getFullYear();
-  const pfx={facture:'FA',devis:'DEV',bon_commande:'BC',bon_livraison:'BL',avoir:'AV',proforma:'PF',facture_achat:'ACH'}[type]||'DOC';
+  const pfx={facture:'FA',devis:'DEV',bon_commande:'BC',bon_livraison:'BL',avoir:'AV',proforma:'PF',facture_achat:'ACH',recu:'REC',acompte:'ACP',situation:'SIT'}[type]||'DOC';
   db.prepare('INSERT OR IGNORE INTO numerotation (account_id,type,annee,dernier_numero,prefixe) VALUES (?,?,?,0,?)').run(aid,type,y,pfx);
   const r=db.prepare('UPDATE numerotation SET dernier_numero=dernier_numero+1 WHERE account_id=? AND type=? AND annee=? RETURNING dernier_numero,prefixe').get(aid,type,y);
   return r.prefixe+'-'+y+'-'+String(r.dernier_numero).padStart(4,'0');
