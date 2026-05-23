@@ -734,6 +734,23 @@ function renderDocs(type, label, icon) {
   el.innerHTML = html;
 }
 
+function bcSwitchTiers(type) {
+  var allTiers = state.tiers;
+  var isFourn = type === 'fournisseur';
+  var filtered = isFourn
+    ? allTiers.filter(function(t){return t.type==='fournisseur'||t.type==='les_deux';})
+    : allTiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var opts = '<option value="">-- Choisir '+(isFourn?'fournisseur':'client')+' --</option>';
+  filtered.forEach(function(t){ opts += '<option value="'+t.id+'">'+t.raison_sociale+'</option>'; });
+  var sel = document.getElementById('d_tiers');
+  if (sel) sel.innerHTML = opts;
+  // Toggle button styles
+  var btnC = document.getElementById('bc_btn_client');
+  var btnF = document.getElementById('bc_btn_fourn');
+  if (btnC) { btnC.style.background = isFourn?'#06111e':'#1a5fb4'; btnC.style.color = isFourn?'#64748b':'#fff'; btnC.style.border = isFourn?'1px solid #1e3a5f':'none'; }
+  if (btnF) { btnF.style.background = isFourn?'#1a5fb4':'#06111e'; btnF.style.color = isFourn?'#fff':'#64748b'; btnF.style.border = isFourn?'none':'1px solid #1e3a5f'; }
+}
+
 async function convertDoc(srcId, newType) {
   try {
     const src = await api('GET', '/api/documents/'+srcId);
@@ -763,17 +780,39 @@ async function convertDoc(srcId, newType) {
 
 function docForm(id, type) {
   ligneCount = 0;
-  var clients = state.tiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var isBc = type === 'bon_commande';
+  var allTiers = state.tiers;
+  var clients = allTiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var fournisseurs = allTiers.filter(function(t){return t.type==='fournisseur'||t.type==='les_deux';});
   var today = new Date().toISOString().split('T')[0];
   var clientOpts = '<option value="">-- Choisir client --</option>';
   clients.forEach(function(t){ clientOpts += '<option value="'+t.id+'">'+t.raison_sociale+'</option>'; });
+  var fournOpts = '<option value="">-- Choisir fournisseur --</option>';
+  fournisseurs.forEach(function(t){ fournOpts += '<option value="'+t.id+'">'+t.raison_sociale+'</option>'; });
   var statOpts = ['brouillon','envoye','valide'].map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('');
   var ligne0 = makeLigneHTML(0, {});
   ligneCount = 1;
-  openModal('Nouveau '+(type==='facture'?'facture':'devis'),
+  // Label titre selon type
+  var typeLabels = {facture:'Facture',devis:'Devis',proforma:'Proforma',bon_commande:'Bon de Commande',bon_livraison:'Bon de Livraison',avoir:'Avoir'};
+  var titre = 'Nouveau ' + (typeLabels[type]||type);
+  // Tiers selector: BC = choix client OU fournisseur, sinon client uniquement
+  var tiersField;
+  if (isBc) {
+    tiersField = '<div class="form-field full">'+
+      '<label>Type de tiers</label>'+
+      '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+      '<button id="bc_btn_client" onclick="bcSwitchTiers('+"'client'"+')" style="flex:1;padding:8px;background:#1a5fb4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">👥 Client</button>'+
+      '<button id="bc_btn_fourn" onclick="bcSwitchTiers('+"'fournisseur'"+')" style="flex:1;padding:8px;background:#06111e;color:#64748b;border:1px solid #1e3a5f;border-radius:8px;cursor:pointer">🏪 Fournisseur</button>'+
+      '</div>'+
+      '<select id="d_tiers" id="d_tiers_client">'+clientOpts+'</select>'+
+      '</div>';
+  } else {
+    tiersField = '<div class="form-field"><label>'+(type==='bon_livraison'||type==='facture'||type==='avoir'?'Client':'Tiers')+'</label><select id="d_tiers">'+clientOpts+'</select></div>';
+  }
+  openModal(titre,
     '<div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1a5fb4">Numerotation auto CGI Art.145 · ICE obligatoire TVA</div>'+
     '<div class="form-grid">'+
-    '<div class="form-field"><label>Client</label><select id="d_tiers">'+clientOpts+'</select></div>'+
+    tiersField+
     '<div class="form-field"><label>Date</label><input type="date" id="d_date" value="'+today+'"></div>'+
     '<div class="form-field"><label>Echeance</label><input type="date" id="d_ech"></div>'+
     '<div class="form-field"><label>Paiement</label><select id="d_pay"><option>virement</option><option>cheque</option><option>especes</option><option>carte</option></select></div>'+
