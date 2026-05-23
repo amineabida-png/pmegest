@@ -1772,6 +1772,22 @@ async function submitTrial() {
 // ═══════════════════════════════════════════════════════════════
 // IMPRESSION FACTURE
 // ═══════════════════════════════════════════════════════════════
+function getPrintCSS(mode) {
+  if (window._printMode !== 'entete') return '';
+  if (mode === 'doc') {
+    return '@media print{' +
+      '.entete-spacer{display:block!important;height:5.5cm}' +
+      '.doc-header{display:none!important}' +
+      '@page{margin-top:0.5cm;margin-bottom:1cm;margin-left:1cm;margin-right:1cm}' +
+    '}';
+  }
+  return '@media print{' +
+    '.header{display:none!important}' +
+    'body{padding-top:5.5cm}' +
+    '@page{margin-top:0.5cm;margin-bottom:1cm;margin-left:1cm;margin-right:1cm}' +
+  '}';
+}
+
 function askPrintMode(callback) {
   openModal('Mode impression',
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:10px">'+
@@ -1826,7 +1842,7 @@ async function doPrintDoc(id) {
     '<style>'+
     '*{margin:0;padding:0;box-sizing:border-box}'+
     'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}'+
-    '@media print{body{padding:10px}@page{margin:1cm;size:A4}}'+
+    '@media print{body{padding:0}@page{margin:1cm;size:A4}}'+(getPrintCSS('doc'))+
     '.doc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:15px;border-bottom:3px solid #1a5fb4}'+
     '.logo-zone{width:180px;height:80px;display:flex;align-items:center}'+
     '.logo-zone img{max-width:180px;max-height:80px;object-fit:contain}'+
@@ -2509,7 +2525,7 @@ async function doRecu(id) {
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
   '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
   '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
-  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative}'+
+  '@media print{@page{margin:1cm;size:A4}body{padding:0}}'+(getPrintCSS('premium'))+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative}'+
   '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
   '+(window._printMode==="entete"?".header{display:none}":"")+".header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between;align-items:flex-start}'+
   '.co-name{font-family:"Playfair Display",serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}'+
@@ -2761,7 +2777,7 @@ async function doAcompte(id) {
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
   '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
   '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
-  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
+  '@media print{@page{margin:1cm;size:A4}body{padding:0}}'+(getPrintCSS('premium'))+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
   '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
   '+(window._printMode==="entete"?".header{display:none}":"")+".header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between}'+
   '.co-name{font-family:"Playfair Display",serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}'+
@@ -3087,7 +3103,7 @@ async function doSituation(id) {
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+d.numero+'</title>'+
   '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'+
   '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"DM Sans",Arial,sans-serif;background:#fff;padding:30px;font-size:11px;color:#1a1a2e}'+
-  '@media print{body{padding:15px}@page{margin:1cm;size:A4}}'+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
+  '@media print{@page{margin:1cm;size:A4}body{padding:0}}'+(getPrintCSS('premium'))+(window._printMode==="entete"?'@media print{@page{margin-top:5.5cm!important;margin-bottom:1cm!important}.header{display:none!important}}':'')+'.doc{max-width:760px;margin:0 auto;border:1px solid #e5e0d4;position:relative}'+
   '.doc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,#8b6914,#c9a84c,#8b6914)}'+
   '+(window._printMode==="entete"?".header{display:none}":"")+".header{background:#0d1b2a;padding:28px 32px 24px 44px;display:flex;justify-content:space-between}'+
   '.co-name{font-family:"Playfair Display",serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}'+
