@@ -780,6 +780,9 @@ async function convertDoc(srcId, newType) {
 
 function docForm(id, type) {
   ligneCount = 0;
+  // If editing, load existing doc data
+  var existingDoc = id ? (state.documents||[]).find(function(d){return d.id==id;}) : null;
+  if (id && !type && existingDoc) type = existingDoc.type;
   var isBc = type === 'bon_commande';
   var allTiers = state.tiers;
   var clients = allTiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
@@ -918,8 +921,9 @@ async function saveDoc(id, type) {
     lignes: lignes
   };
   try {
-    await api('POST','/api/documents',d);
-    closeModal(); await loadAll(); renderPage(currentPage); toast('Document cree','success');
+    if (id) await api('PUT','/api/documents/'+id,d);
+    else await api('POST','/api/documents',d);
+    closeModal(); await loadAll(); renderPage(currentPage); toast('Document sauvegardé ✓','success');
   } catch(e) { toast(e.error||'Erreur','error'); }
 }
 
@@ -1936,6 +1940,9 @@ async function doPrintDoc(id) {
 
 
 async function printBulletin(id) {
+  askPrintMode(function(){ doPrintBulletin(id); });
+}
+async function doPrintBulletin(id) {
   var b = state.bulletins.find(function(x){return x.id==id;});
   if (!b) return;
   var acc = currentAccount;
@@ -2102,8 +2109,8 @@ function renderStock() {
         '<td style="font-size:11px;color:#64748b">'+a.stock_min+'</td>'+
         '<td style="font-size:11px">'+(a.depot||'Principal')+'</td>'+
         '<td><div style="display:flex;gap:4px">'+
-        '<button class="btn btn-success btn-sm" onclick="ajusterStock(a.id,1)">+</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="ajusterStock(a.id,0)">-</button>'+
+        '<button class="btn btn-success btn-sm" onclick="ajusterStock('+a.id+',1)">+</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="ajusterStock('+a.id+',0)">-</button>'+
         '</div></td></tr>';
     });
   }
