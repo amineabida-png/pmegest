@@ -2228,10 +2228,15 @@ function renderDeclarations() {
   html += '<div class="page-sub">Conformite CGI 2026 · DGI · CNSS · Mois en cours: '+m+'/'+y+'</div></div></div>';
   // Cards declarations
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
+  var mSuiv = m === 12 ? 1 : m + 1;
+  var ySuiv = m === 12 ? y + 1 : y;
+  var lastDay = new Date(ySuiv, mSuiv, 0).getDate();
+  var moisNoms = ['','jan','fev','mar','avr','mai','juin','juil','aout','sep','oct','nov','dec'];
+  var moisSuivantLabel = lastDay+'/'+mSuiv+'/'+ySuiv+' ('+moisNoms[mSuiv]+')';
   var decls = [
-    {icon:'🧾',title:'TVA mensuelle',echeance:'20/'+m+'/'+y,montant:tva_collectee,ref:'SIMPL-TVA · tax.gov.ma',color:'#f59e0b',note:'TVA collectee sur CA HT: '+fmtMAD(ca_ht)},
-    {icon:'🏥',title:'CNSS + AMO',echeance:'10/'+m+'/'+y,montant:total_cnss+total_amo,ref:'Damancom · cnss.ma',color:'#22c55e',note:''+buls_mois.length+' employe(s) declare(s)'},
-    {icon:'📋',title:'IR retenue source',echeance:'20/'+m+'/'+y,montant:total_ir,ref:'SIMPL-IR · DGI',color:'#1a5fb4',note:'Retenue sur salaires'},
+    {icon:'🧾',title:'TVA mensuelle',echeance:'Fin '+moisSuivantLabel,montant:tva_collectee,ref:'SIMPL-TVA · tax.gov.ma',color:'#f59e0b',note:'TVA collectee sur CA HT: '+fmtMAD(ca_ht)},
+    {icon:'🏥',title:'CNSS + AMO',echeance:'10/'+mSuiv+'/'+ySuiv,montant:total_cnss+total_amo,ref:'Damancom · cnss.ma',color:'#22c55e',note:''+buls_mois.length+' employe(s) declare(s)'},
+    {icon:'📋',title:'IR retenue source',echeance:'20/'+mSuiv+'/'+ySuiv,montant:total_ir,ref:'SIMPL-IR · DGI',color:'#1a5fb4',note:'Retenue sur salaires'},
   ];
   decls.forEach(function(d) {
     html += '<div class="card" style="border-top:3px solid '+d.color+'">'+
@@ -2250,7 +2255,7 @@ function renderDeclarations() {
   html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:14px">Calendrier fiscal 2026 — التقويم الجبائي</div>';
   html += '<div class="table-wrap"><table><thead><tr><th>Declaration</th><th>Reference</th><th>Periodicite</th><th>Echeance</th><th>Plateforme</th></tr></thead><tbody>';
   var cal = [
-    ['TVA mensuelle','Art.89-103 CGI','Mensuelle','Le 20 du mois suivant','tax.gov.ma · SIMPL-TVA'],
+    ['TVA mensuelle','Art.89-103 CGI','Mensuelle','Fin du mois suivant','tax.gov.ma · SIMPL-TVA'],
     ['IS acomptes trimestriels','Art.169 CGI','Trimestrielle','31/03 · 30/06 · 30/09 · 31/12','tax.gov.ma'],
     ['CNSS + AMO patronal','Code securite sociale','Mensuelle','Le 10 du mois suivant','Damancom · cnss.ma'],
     ['IR retenue source salaires','Art.82 CGI','Mensuelle','Le 20 du mois suivant','tax.gov.ma · SIMPL-IR'],
