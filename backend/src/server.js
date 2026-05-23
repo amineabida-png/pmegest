@@ -752,6 +752,48 @@ app.delete('/api/admin/accounts/:id',auth,superOnly,(req,res)=>{
 });
 app.get('/api/admin/trials',auth,superOnly,(req,res)=>res.json(db.prepare('SELECT * FROM trial_requests ORDER BY created_at DESC').all()));
 app.get('/api/legal',(req,res)=>res.json(L));
+// ═══ CHANTIERS BTP API ═══
+app.get('/api/chantiers',auth,(req,res)=>{
+  try {
+    const rows=db.prepare('SELECT * FROM chantiers WHERE account_id=? ORDER BY created_at DESC').all(req.account.id);
+    res.json(rows);
+  } catch(e){res.json([]);}
+});
+
+app.post('/api/chantiers',auth,(req,res)=>{
+  try {
+    const d=req.body;
+    const r=db.prepare(`INSERT INTO chantiers (account_id,nom,client,client_id,ville,adresse,budget_ht,montant_contrat,date_debut,date_fin_prevue,avancement,statut,description,responsable,notes)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      req.account.id,d.nom,d.client||'',d.client_id||null,d.ville||'',d.adresse||'',
+      d.budget_ht||0,d.montant_contrat||0,d.date_debut||null,d.date_fin_prevue||null,
+      d.avancement||0,d.statut||'en_cours',d.description||'',d.responsable||'',d.notes||''
+    );
+    res.json({id:r.lastInsertRowid,success:true});
+  } catch(e){res.status(500).json({error:e.message});}
+});
+
+app.put('/api/chantiers/:id',auth,(req,res)=>{
+  try {
+    const d=req.body;
+    db.prepare(`UPDATE chantiers SET nom=?,client=?,client_id=?,ville=?,adresse=?,budget_ht=?,montant_contrat=?,date_debut=?,date_fin_prevue=?,date_fin_reelle=?,avancement=?,statut=?,description=?,responsable=?,notes=?
+      WHERE id=? AND account_id=?`).run(
+      d.nom,d.client||'',d.client_id||null,d.ville||'',d.adresse||'',
+      d.budget_ht||0,d.montant_contrat||0,d.date_debut||null,d.date_fin_prevue||null,d.date_fin_reelle||null,
+      d.avancement||0,d.statut||'en_cours',d.description||'',d.responsable||'',d.notes||'',
+      req.params.id,req.account.id
+    );
+    res.json({success:true});
+  } catch(e){res.status(500).json({error:e.message});}
+});
+
+app.delete('/api/chantiers/:id',auth,(req,res)=>{
+  try {
+    db.prepare('DELETE FROM chantiers WHERE id=? AND account_id=?').run(req.params.id,req.account.id);
+    res.json({success:true});
+  } catch(e){res.status(500).json({error:e.message});}
+});
+
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'frontend/public/index.html')));
 
 app.listen(PORT,'0.0.0.0',()=>{

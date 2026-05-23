@@ -424,7 +424,7 @@ function buildSidebar() {
 
 async function loadAll() {
   try {
-    var eps = ['tiers','articles','documents','employes','bulletins','conges','tresorerie','crm','alertes'];
+    var eps = ['tiers','articles','documents','employes','bulletins','conges','tresorerie','crm','alertes','chantiers'];
     var results = await Promise.all(eps.map(function(e){ return api('GET','/api/'+e); }));
     eps.forEach(function(e,i){ state[e] = results[i]; });
     var unread = state.alertes.filter(function(a){return !a.lu;}).length;
@@ -2171,53 +2171,167 @@ function renderDeclarations() {
 // CHANTIERS BTP
 // ═══════════════════════════════════════════════════════════════
 function renderChantiers() {
-  var el = document.getElementById("page-chantiers");
+  var el = document.getElementById('page-chantiers');
+  var chantiers = state.chantiers || [];
+  var actifs = chantiers.filter(function(c){return c.statut!=='termine';});
+  var budgetTotal = chantiers.reduce(function(a,c){return a+(c.montant_contrat||c.budget_ht||0);},0);
+  var avMoyen = chantiers.length ? Math.round(chantiers.reduce(function(a,c){return a+(c.avancement||0);},0)/chantiers.length) : 0;
+
   var html = '<div class="page-header"><div><div class="page-title">🏗 Chantiers BTP</div>';
-  html += '<div class="page-sub">Suivi de chantiers · Materiaux · Avancement</div></div>';
-  html += '<button class="btn btn-blue" onclick="pfToast()">+ Nouveau chantier</button></div>';
-  // Demo chantiers
-  var chantiers = [
-    {nom:'Residence Al Wifak - Bloc A',client:'ARAB AGENCEMENT SARL',budget:2500000,avancement:65,statut:'En cours',ville:'Casablanca'},
-    {nom:'Villa Ain Diab',client:'Client particulier',budget:850000,avancement:30,statut:'En cours',ville:'Casablanca'},
-    {nom:'Bureau Maarif - Renovation',client:'STE ADMIN',budget:320000,avancement:100,statut:'Termine',ville:'Casablanca'},
-  ];
+  html += '<div class="page-sub">'+chantiers.length+' chantier(s) · Suivi avancement · Matériaux</div></div>';
+  html += '<button class="btn btn-blue" onclick="chantierForm()">+ Nouveau chantier</button></div>';
+
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-  var stats = [{l:'Chantiers actifs',v:'2',c:'#1a5fb4'},{l:'Budget total',v:fmtMAD(3350000),c:'#22c55e'},{l:'Taux moyen',v:'65%',c:'#f59e0b'}];
-  stats.forEach(function(s){
-    html += '<div class="stat-card"><div class="stat-val" style="color:'+s.c+'">'+s.v+'</div><div class="stat-lbl">'+s.l+'</div></div>';
-  });
+  html += '<div class="stat-card"><div class="stat-val" style="color:#1a5fb4">'+actifs.length+'</div><div class="stat-lbl">Chantiers actifs</div></div>';
+  html += '<div class="stat-card"><div class="stat-val" style="color:#22c55e">'+fmtMAD(budgetTotal)+'</div><div class="stat-lbl">Budget total</div></div>';
+  html += '<div class="stat-card"><div class="stat-val" style="color:#f59e0b">'+avMoyen+'%</div><div class="stat-lbl">Avancement moyen</div></div>';
   html += '</div>';
-  html += '<div style="display:flex;flex-direction:column;gap:12px">';
-  chantiers.forEach(function(c) {
-    var pct = c.avancement;
-    html += '<div class="card">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'+
-      '<div><div style="font-size:15px;font-weight:800">'+c.nom+'</div>'+
-      '<div style="font-size:12px;color:#64748b;margin-top:2px">'+c.client+' · '+c.ville+'</div></div>'+
-      '<div style="text-align:right">'+
-      '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:'+(c.statut==='Termine'?'#22c55e18':'#1a5fb418')+';color:'+(c.statut==='Termine'?'#22c55e':'#1a5fb4')+'">'+c.statut+'</span>'+
-      '<div style="font-size:14px;font-weight:800;color:#1a5fb4;margin-top:4px">'+fmtMAD(c.budget)+'</div>'+
-      '</div></div>'+
-      '<div style="margin-bottom:6px">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
-      '<span style="font-size:11px;color:#64748b">Avancement</span>'+
-      '<span style="font-size:11px;font-weight:700;color:'+(pct>=100?'#22c55e':pct>=50?'#1a5fb4':'#f59e0b')+'">'+pct+'%</span></div>'+
-      '<div style="background:#0f1e35;border-radius:6px;height:8px">'+
-      '<div style="background:'+(pct>=100?'#22c55e':pct>=50?'#1a5fb4':'#f59e0b')+';border-radius:6px;height:100%;width:'+pct+'%;transition:width .5s"></div>'+
-      '</div></div>'+
-      '</div>';
-  });
-  html += '</div>';
-  html += '<div style="margin-top:14px;padding:12px;background:#1a5fb415;border-radius:10px;font-size:12px;color:#1a5fb4;border:1px solid #1a5fb430">'+
-    '📌 Module complet disponible prochainement : Devis BTP, Bon commande, Suivi main-oeuvre, Retenue garantie (5%)'+
-    '</div>';
+
+  if (!chantiers.length) {
+    html += '<div class="card" style="text-align:center;padding:40px;color:#64748b">';
+    html += '<div style="font-size:48px;margin-bottom:12px">🏗</div>';
+    html += '<div style="font-size:16px;font-weight:600;margin-bottom:8px">Aucun chantier</div>';
+    html += '<div style="font-size:13px;margin-bottom:20px">Créez votre premier chantier BTP</div>';
+    html += '<button class="btn btn-blue" onclick="chantierForm()">+ Nouveau chantier</button></div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:12px">';
+    chantiers.forEach(function(c) {
+      var pct = c.avancement||0;
+      var statColor = c.statut==='termine'?'#22c55e':c.statut==='suspendu'?'#ef4444':'#1a5fb4';
+      var statLabel = {en_cours:'En cours',termine:'Terminé',suspendu:'Suspendu',planifie:'Planifié'}[c.statut]||c.statut;
+      var barColor = pct>=80?'#22c55e':pct>=40?'#1a5fb4':'#f59e0b';
+      html += '<div class="card" style="cursor:pointer" onclick="chantierDetail('+c.id+')">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
+      html += '<div><div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:3px">'+c.nom+'</div>';
+      html += '<div style="font-size:12px;color:#64748b">'+(c.client||'—')+' · '+(c.ville||'—')+'</div></div>';
+      html += '<div style="text-align:right"><span style="background:'+statColor+'20;color:'+statColor+';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">'+statLabel+'</span>';
+      html += '<div style="font-size:14px;font-weight:800;color:#22c55e;margin-top:4px">'+fmtMAD(c.montant_contrat||c.budget_ht||0)+'</div></div>';
+      html += '</div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:6px">';
+      html += '<span>Avancement</span><span style="font-weight:700;color:'+barColor+'">'+pct+'%</span></div>';
+      html += '<div style="height:8px;background:#1e3a5f;border-radius:4px;overflow:hidden">';
+      html += '<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:4px;transition:width 0.5s"></div></div>';
+      if (c.date_debut||c.date_fin_prevue) {
+        html += '<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#64748b">';
+        if(c.date_debut) html += '<span>📅 Début: '+fmtDate(c.date_debut)+'</span>';
+        if(c.date_fin_prevue) html += '<span>🏁 Fin prévue: '+fmtDate(c.date_fin_prevue)+'</span>';
+        if(c.responsable) html += '<span>👤 '+c.responsable+'</span>';
+        html += '</div>';
+      }
+      html += '<div style="display:flex;gap:6px;margin-top:12px;border-top:1px solid #1e3a5f;padding-top:10px">';
+      html += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();chantierForm('+c.id+')">✏ Modifier</button>';
+      html += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();chantierAvancement('+c.id+','+pct+')">📊 Avancement</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delChantier('+c.id+')">✕</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
   el.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
-// REÇU DE PAIEMENT — وصل الاستلام
-// ═══════════════════════════════════════════════════════════════
+function chantierForm(id) {
+  var c = id ? (state.chantiers||[]).find(function(x){return x.id==id;}) : {};
+  if (!c) c = {};
+  var clients = state.tiers.filter(function(t){return t.type==='client'||t.type==='les_deux';});
+  var clientOpts = '<option value="">-- Choisir client (optionnel) --</option>';
+  clients.forEach(function(t){clientOpts+='<option value="'+t.id+'" data-nom="'+t.raison_sociale+'"'+(c.client_id==t.id?' selected':'')+'>'+t.raison_sociale+'</option>';});
+  openModal(id?'Modifier chantier':'Nouveau chantier 🏗',
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Nom du chantier *</label><input id="ch_nom" value="'+(c.nom||'')+'" placeholder="Ex: Résidence Al Wifak - Bloc A"></div>'+
+    '<div class="form-field full"><label>Client / Maitre ouvrage</label><select id="ch_client_id" onchange="chFillClient()">'+clientOpts+'</select></div>'+
+    '<div class="form-field full"><label>Nom client (saisie libre)</label><input id="ch_client" value="'+(c.client||'')+'" placeholder="Nom si non dans la liste"></div>'+
+    '<div class="form-field"><label>Ville</label><input id="ch_ville" value="'+(c.ville||'')+'" placeholder="Casablanca"></div>'+
+    '<div class="form-field"><label>Adresse chantier</label><input id="ch_adr" value="'+(c.adresse||'')+'" placeholder="Rue, quartier..."></div>'+
+    '<div class="form-field"><label>Montant contrat HT (MAD)</label><input type="number" id="ch_contrat" value="'+(c.montant_contrat||'')+'" step="0.01" placeholder="0.00"></div>'+
+    '<div class="form-field"><label>Budget interne HT (MAD)</label><input type="number" id="ch_budget" value="'+(c.budget_ht||'')+'" step="0.01" placeholder="0.00"></div>'+
+    '<div class="form-field"><label>Date début</label><input type="date" id="ch_debut" value="'+(c.date_debut||'')+'"></div>'+
+    '<div class="form-field"><label>Date fin prévue</label><input type="date" id="ch_fin" value="'+(c.date_fin_prevue||'')+'"></div>'+
+    '<div class="form-field"><label>Avancement (%)</label><input type="number" id="ch_av" value="'+(c.avancement||0)+'" min="0" max="100"></div>'+
+    '<div class="form-field"><label>Statut</label><select id="ch_stat">'+
+    [{v:'en_cours',l:'En cours'},{v:'planifie',l:'Planifié'},{v:'suspendu',l:'Suspendu'},{v:'termine',l:'Terminé'}].map(function(s){return '<option value="'+s.v+'"'+(c.statut===s.v?' selected':'')+'>'+s.l+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="form-field"><label>Responsable chantier</label><input id="ch_resp" value="'+(c.responsable||'')+'" placeholder="Nom du chef de chantier"></div>'+
+    '<div class="form-field full"><label>Description / Objet des travaux</label><textarea id="ch_desc" rows="2">'+(c.description||'')+'</textarea></div>'+
+    '<div class="form-field full"><label>Notes</label><textarea id="ch_notes" rows="2">'+(c.notes||'')+'</textarea></div>'+
+    '</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveChantier('+(id||0)+')">Enregistrer</button>'
+  );
+}
+
+function chFillClient() {
+  var sel = document.getElementById('ch_client_id');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt.value) document.getElementById('ch_client').value = opt.getAttribute('data-nom')||'';
+}
+
+function chantierAvancement(id, current) {
+  openModal('Mise à jour avancement 📊',
+    '<div style="text-align:center;padding:20px">'+
+    '<div style="font-size:14px;color:#64748b;margin-bottom:16px">Avancement actuel : <strong style="color:#f59e0b">'+current+'%</strong></div>'+
+    '<input type="range" id="ch_av_range" min="0" max="100" value="'+current+'" style="width:100%;margin-bottom:10px" oninput="document.getElementById('ch_av_val').textContent=this.value+'%'">'+
+    '<div id="ch_av_val" style="font-size:32px;font-weight:900;color:#1a5fb4">'+current+'%</div>'+
+    '</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="updateAvancement('+id+')">Mettre à jour</button>'
+  );
+}
+
+async function updateAvancement(id) {
+  var av = +document.getElementById('ch_av_range').value;
+  var c = (state.chantiers||[]).find(function(x){return x.id==id;});
+  if (!c) return;
+  try {
+    await api('PUT','/api/chantiers/'+id, Object.assign({},c,{avancement:av, statut:av>=100?'termine':c.statut}));
+    closeModal(); await loadChantiers(); toast('Avancement mis à jour ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function saveChantier(id) {
+  var d = {
+    nom: document.getElementById('ch_nom').value,
+    client: document.getElementById('ch_client').value,
+    client_id: document.getElementById('ch_client_id').value||null,
+    ville: document.getElementById('ch_ville').value,
+    adresse: document.getElementById('ch_adr').value,
+    montant_contrat: +document.getElementById('ch_contrat').value||0,
+    budget_ht: +document.getElementById('ch_budget').value||0,
+    date_debut: document.getElementById('ch_debut').value||null,
+    date_fin_prevue: document.getElementById('ch_fin').value||null,
+    avancement: +document.getElementById('ch_av').value||0,
+    statut: document.getElementById('ch_stat').value,
+    responsable: document.getElementById('ch_resp').value,
+    description: document.getElementById('ch_desc').value,
+    notes: document.getElementById('ch_notes').value
+  };
+  if (!d.nom) return toast('Nom du chantier requis','error');
+  try {
+    if (id) await api('PUT','/api/chantiers/'+id,d);
+    else await api('POST','/api/chantiers',d);
+    closeModal(); await loadChantiers(); toast('Chantier sauvegardé ✓','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function delChantier(id) {
+  if (!confirm('Supprimer ce chantier ?')) return;
+  try {
+    await api('DELETE','/api/chantiers/'+id);
+    await loadChantiers(); toast('Chantier supprimé','success');
+  } catch(e){toast(e.error||'Erreur','error');}
+}
+
+async function loadChantiers() {
+  try {
+    state.chantiers = await api('GET','/api/chantiers');
+    renderChantiers();
+  } catch(e){state.chantiers=[];}
+}
+
+function chantierDetail(id) {
+  chantierForm(id);
+}
+
+
 function renderRecu(el) {
   el = document.getElementById('page-recu');
   var docs = state.documents.filter(function(d){return d.type==='recu';});
