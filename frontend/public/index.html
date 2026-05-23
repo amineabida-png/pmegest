@@ -467,9 +467,9 @@ function renderPage(p) {
   else if (p === 'bon_commande') renderDocs('bon_commande','Bon de Commande','🛒');
   else if (p === 'bon_livraison') renderDocs('bon_livraison','Bon de Livraison','🚚');
   else if (p === 'avoir') renderDocs('avoir','Avoirs','↩');
-  else if (p === 'recu') renderRecu(document.getElementById('page-recu'));
-  else if (p === 'acompte') renderAcompte(document.getElementById('page-acompte'));
-  else if (p === 'situation') renderSituation(document.getElementById('page-situation'));
+  else if (p === 'recu') renderRecu();
+  else if (p === 'acompte') renderAcompte();
+  else if (p === 'situation') renderSituation();
 }
 
 async function delTiers(id){delItem('tiers',id,'ce tiers');}
@@ -698,7 +698,8 @@ async function saveArticle(id) {
 // DOCUMENTS
 // ═══════════════════════════════════════════════════════════════
 function renderDocs(type, label, icon) {
-  var el = document.getElementById('page-'+(type==='facture'?'facturation':'devis'));
+  var pageId = {facture:'facturation',devis:'devis',proforma:'proforma',bon_commande:'bon_commande',bon_livraison:'bon_livraison',avoir:'avoir'}[type]||type;
+  var el = document.getElementById('page-'+pageId);
   var docs = state.documents.filter(function(d){return d.type===type;});
   var total = docs.filter(function(d){return d.statut==='valide';}).reduce(function(a,d){return a+d.total_ttc;},0);
   var html = '<div class="page-header"><div><div class="page-title">'+icon+' '+label+'</div>';
@@ -2176,7 +2177,7 @@ function renderChantiers() {
 // REÇU DE PAIEMENT — وصل الاستلام
 // ═══════════════════════════════════════════════════════════════
 function renderRecu(el) {
-  if (!el) el = document.getElementById('page-recu');
+  el = document.getElementById('page-recu');
   var docs = state.documents.filter(function(d){return d.type==='recu';});
   var html = '<div class="page-header"><div><div class="page-title">🧾 Reçus de Paiement</div>';
   html += '<div class="page-sub">'+docs.length+' reçu(s) · REC-'+new Date().getFullYear()+'-XXXX</div></div>';
@@ -2418,7 +2419,7 @@ async function printRecu(id) {
 // DEMANDE D'ACOMPTE — طلب دفعة مقدمة
 // ═══════════════════════════════════════════════════════════════
 function renderAcompte(el) {
-  if (!el) el = document.getElementById('page-acompte');
+  el = document.getElementById('page-acompte');
   var docs = state.documents.filter(function(d){return d.type==='acompte';});
   var html = '<div class="page-header"><div><div class="page-title">💰 Demandes d\'Acompte</div>';
   html += '<div class="page-sub">'+docs.length+' acompte(s) · ACP-'+new Date().getFullYear()+'-XXXX</div></div>';
@@ -2673,7 +2674,7 @@ async function printAcompte(id) {
 // SITUATION DE TRAVAUX — كشف الأشغال
 // ═══════════════════════════════════════════════════════════════
 function renderSituation(el) {
-  if (!el) el = document.getElementById('page-situation');
+  el = document.getElementById('page-situation');
   var docs = state.documents.filter(function(d){return d.type==='situation';});
   var html = '<div class="page-header"><div><div class="page-title">🏗 Situations de Travaux</div>';
   html += '<div class="page-sub">'+docs.length+' situation(s) · SIT-'+new Date().getFullYear()+'-XXXX</div></div>';
@@ -3064,7 +3065,7 @@ function nombreEnLettres(n) {
 // 1. REÇU DE PAIEMENT  (REC)
 // ══════════════════════════════════════════════════════════════════
 function renderRecu(el) {
-  if (!el) el = document.getElementById('page-recu');
+  el = document.getElementById('page-recu');
   var docs = (state.documents||[]).filter(function(d){return d.type==='recu';});
   var total = docs.reduce(function(a,d){return a+d.total_ttc;},0);
   var html = '<div class="page-header">'
@@ -3400,7 +3401,7 @@ body{font-family:'DM Sans',Arial,sans-serif;background:#F0EDE8;padding:24px;font
 // 2. DEMANDE D'ACOMPTE  (ACP)
 // ══════════════════════════════════════════════════════════════════
 function renderAcompte(el) {
-  if (!el) el = document.getElementById('page-acompte');
+  el = document.getElementById('page-acompte');
   var docs = (state.documents||[]).filter(function(d){return d.type==='acompte';});
   var html = '<div class="page-header">'
     +'<div><div class="page-title">💰 Demandes d\'Acompte — طلب دفعة مقدمة</div>'
@@ -3765,7 +3766,7 @@ tr:nth-child(even){background:#FAF8F4}
 // 3. SITUATION DE TRAVAUX  (SIT)
 // ══════════════════════════════════════════════════════════════════
 function renderSituation(el) {
-  if (!el) el = document.getElementById('page-situation');
+  el = document.getElementById('page-situation');
   var docs = (state.documents||[]).filter(function(d){return d.type==='situation';});
   var html = '<div class="page-header">'
     +'<div><div class="page-title">🏗 Situations de Travaux — وضعية الأشغال</div>'
