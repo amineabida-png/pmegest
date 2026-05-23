@@ -259,6 +259,27 @@ try { db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (account_id) REFERENCES accounts(id)
   );
+
+  CREATE TABLE IF NOT EXISTS chantiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    nom TEXT NOT NULL,
+    client TEXT DEFAULT '',
+    client_id INTEGER,
+    ville TEXT DEFAULT '',
+    adresse TEXT DEFAULT '',
+    budget_ht REAL DEFAULT 0,
+    montant_contrat REAL DEFAULT 0,
+    date_debut TEXT,
+    date_fin_prevue TEXT,
+    date_fin_reelle TEXT,
+    avancement INTEGER DEFAULT 0,
+    statut TEXT DEFAULT 'en_cours',
+    description TEXT DEFAULT '',
+    responsable TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
 `); } catch(e) { console.error('DB init error:', e.message); }
 
 // RESET DB if requested
