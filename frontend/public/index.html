@@ -2269,13 +2269,15 @@ function chantierAvancement(id, current) {
   openModal('Mise à jour avancement 📊',
     '<div style="text-align:center;padding:20px">'+
     '<div style="font-size:14px;color:#64748b;margin-bottom:16px">Avancement actuel : <strong style="color:#f59e0b">'+current+'%</strong></div>'+
-    '<input type="range" id="ch_av_range" min="0" max="100" value="'+current+'" style="width:100%;margin-bottom:10px" oninput="document.getElementById('ch_av_val').textContent=this.value+'%'">'+
+    '<input type="range" id="ch_av_range" min="0" max="100" value="'+current+'" style="width:100%;margin-bottom:10px" oninput="chAvUpdate(this.value)">'+
     '<div id="ch_av_val" style="font-size:32px;font-weight:900;color:#1a5fb4">'+current+'%</div>'+
     '</div>',
     '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
     '<button class="btn btn-blue" onclick="updateAvancement('+id+')">Mettre à jour</button>'
   );
 }
+
+function chAvUpdate(v) { var el=document.getElementById('ch_av_val'); if(el) el.textContent=v+'%'; }
 
 async function updateAvancement(id) {
   var av = +document.getElementById('ch_av_range').value;
