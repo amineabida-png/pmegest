@@ -812,6 +812,8 @@ function docForm(id, type) {
   openModal(titre,
     '<div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1a5fb4">Numerotation auto CGI Art.145 · ICE obligatoire TVA</div>'+
     '<div class="form-grid">'+
+    '<div class="form-field"><label>N° Document <span style="color:#64748b;font-size:10px">(vide = auto)</span></label>'+
+    '<input id="d_numero" placeholder="Ex: FA-2026-0042" style="font-family:monospace"></div>'+
     tiersField+
     '<div class="form-field"><label>Date</label><input type="date" id="d_date" value="'+today+'"></div>'+
     '<div class="form-field"><label>Echeance</label><input type="date" id="d_ech"></div>'+
@@ -909,6 +911,7 @@ async function saveDoc(id, type) {
     tiers_if: tiers?tiers.if_fiscal:'',
     tiers_adresse: tiers?tiers.adresse:'',
     tiers_ville: tiers?tiers.ville:'',
+    numero: (document.getElementById('d_numero')?document.getElementById('d_numero').value.trim():'')||null,
     statut: document.getElementById("d_stat").value,
     mode_paiement: document.getElementById("d_pay").value,
     notes: document.getElementById("d_notes").value,
