@@ -815,9 +815,80 @@ app.delete('/api/chantiers/:id',auth,(req,res)=>{
   } catch(e){res.status(500).json({error:e.message});}
 });
 
-// ══════════════════════════════════════════════════════════
-//  IA — Assistant Génération de Documents (Groq API)
-// ══════════════════════════════════════════════════════════
+// ── OCR — Analyser image facture fournisseur ─────────────
+app.post('/api/ia/ocr-facture', auth, async (req, res) => {
+  try {
+    const { base64, mime, isImage } = req.body;
+    if (!GROQ_API_KEY) return res.status(500).json({ error: 'Clé Groq non configurée.' });
+    if (!base64) return res.status(400).json({ error: 'Image manquante.' });
+
+    const systemPrompt = `Tu analyses une facture fournisseur et tu extrais les données. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.
+
+Structure exacte:
+{
+  "type": "facture",
+  "tiers_nom": "Nom du fournisseur",
+  "tiers_adresse": "Adresse si visible",
+  "tiers_ville": "Ville si visible",
+  "tiers_ice": "ICE si visible",
+  "date_doc": "YYYY-MM-DD ou null",
+  "echeance": "YYYY-MM-DD ou null",
+  "mode_paiement": "virement",
+  "notes": "Référence ou notes utiles",
+  "lignes": [
+    {
+      "designation": "Description produit/service",
+      "quantite": 1,
+      "prix_unit_ht": 0,
+      "taux_tva": 20
+    }
+  ]
+}
+
+Si tu ne peux pas lire une valeur, mets null ou 0. TVA Maroc: 0%, 7%, 10%, 14%, 20%.`;
+
+    // Groq vision with llama
+    const messages = isImage ? [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: [
+        { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}` } },
+        { type: 'text', text: 'Analyse cette facture fournisseur et extrait les données en JSON.' }
+      ]}
+    ] : [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: 'Analyse ce document et extrait les données de facturation en JSON.' }
+    ];
+
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: isImage ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.1-8b-instant',
+        messages,
+        temperature: 0.1,
+        max_tokens: 1000
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return res.status(500).json({ error: 'Erreur Groq OCR: ' + err });
+    }
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const clean = content.replace(/```json|```/g, '').trim();
+    try {
+      const parsed = JSON.parse(clean);
+      res.json({ success: true, document: parsed });
+    } catch(e) {
+      res.status(500).json({ error: 'Impossible d\'analyser ce document. Essayez avec une image plus nette.', raw: clean });
+    }
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 

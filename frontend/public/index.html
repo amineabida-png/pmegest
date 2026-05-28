@@ -554,51 +554,146 @@ async function renderDashboard() {
   var smig = (LEGAL.SMIG || 3422);
   var m = new Date().getMonth()+2;
   var y = new Date().getFullYear();
-  var html = '<div style="margin-bottom:22px"><div class="page-title">Dashboard — لوحة التحكم</div>';
+
+  // ── Calcul rappels échéances ──
+  var docs = state.documents || [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var rappels = docs.filter(function(d){
+    if (d.type!=='facture' || d.statut==='annule') return false;
+    if (!d.date_echeance) return false;
+    var ech = new Date(d.date_echeance); ech.setHours(0,0,0,0);
+    var diff = Math.round((ech-today)/86400000);
+    return diff <= 7;
+  }).map(function(d){
+    var ech = new Date(d.date_echeance); ech.setHours(0,0,0,0);
+    var diff = Math.round((ech-today)/86400000);
+    return {doc:d, diff:diff};
+  }).sort(function(a,b){return a.diff-b.diff;});
+
+  // ── Top clients ──
+  var clientMap = {};
+  docs.filter(function(d){return d.type==='facture'&&d.statut==='valide';}).forEach(function(d){
+    var k = d.tiers_nom||'—';
+    clientMap[k] = (clientMap[k]||0) + (d.total_ttc||0);
+  });
+  var topClients = Object.entries(clientMap).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
+
+  // ── Taux conversion devis→facture ──
+  var nbDevis = docs.filter(function(d){return d.type==='devis';}).length;
+  var nbConvertis = docs.filter(function(d){return d.notes&&d.notes.includes('DEV-');}).length;
+  var tauxConv = nbDevis > 0 ? Math.round(nbConvertis/nbDevis*100) : 0;
+
+  var html = '<div style="margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">';
+  html += '<div><div class="page-title">📊 Dashboard analytique</div>';
   html += '<div class="page-sub">Conforme LF 2026 · Bonjour, '+currentAccount.name+'</div></div>';
-  html += '<div class="stats-grid">';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-blue btn-sm" onclick="iaToggle()">🤖 Assistant IA</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="showPage(\'facturation\')">+ Facture</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="showPage(\'devis\')">+ Devis</button>';
+  html += '</div></div>';
+
+  // ── KPI Cards ──
+  html += '<div class="stats-grid" style="margin-bottom:18px">';
   var cards = [
     ['💰','CA ce mois',fmtMAD(stats.ca_mois||0),'#1a5fb4'],
-    ['📅','CA annee',fmtMAD(stats.ca_annee||0),'#7c3aed'],
-    ['⏳','Impaye',fmtMAD(stats.impaye||0),'#ef4444'],
+    ['📅','CA annuel',fmtMAD(stats.ca_annee||0),'#7c3aed'],
+    ['⏳','Impayé',fmtMAD(stats.impaye||0),'#ef4444'],
     ['👥','Clients',stats.nb_clients||0,'#22c55e'],
-    ['👤','Employes',stats.nb_employes||0,'#f59e0b'],
-    ['💼','Masse salariale',fmtMAD(stats.masse_salariale||0),'#f97316'],
+    ['👤','Employés',stats.nb_employes||0,'#f59e0b'],
+    ['💼','Masse sal.',fmtMAD(stats.masse_salariale||0),'#f97316'],
     ['📦','Stock alerte',stats.stock_alerte||0,'#ef4444'],
-    ['🔔','Alertes',stats.alertes_non_lues||0,'#f59e0b']
+    ['📋','Devis en cours',stats.devis_en_cours||0,'#6366f1']
   ];
   cards.forEach(function(c) {
     html += '<div class="stat-card"><div class="stat-icon" style="background:'+c[3]+'18">'+c[0]+'</div>';
     html += '<div class="stat-val" style="color:'+c[3]+'">'+c[2]+'</div><div class="stat-lbl">'+c[1]+'</div></div>';
   });
   html += '</div>';
-  html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">';
-  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:14px">CA mensuel</div>';
+
+  html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">';
+
+  // ── Graphique CA mensuel amélioré ──
+  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:14px">📈 CA mensuel (12 mois)</div>';
   var months = stats.ca_par_mois || [];
   if (months.length > 0) {
     var maxCA = Math.max.apply(null, months.map(function(m){return m.ca;})) || 1;
-    html += '<div style="display:flex;align-items:flex-end;gap:4px;height:80px">';
+    var totalAn = months.reduce(function(s,m){return s+m.ca;},0);
+    html += '<div style="font-size:11px;color:#64748b;margin-bottom:8px">Total période : <strong style="color:#1a5fb4">'+fmtMAD(totalAn)+'</strong></div>';
+    html += '<div style="display:flex;align-items:flex-end;gap:3px;height:100px">';
     months.forEach(function(mo) {
-      var h = Math.round(mo.ca/maxCA*100);
-      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">';
-      html += '<div style="width:100%;height:'+h+'px;background:linear-gradient(to top,#1a5fb4,#5a9fd4);border-radius:3px 3px 0 0;min-height:2px"></div>';
+      var h = Math.max(Math.round(mo.ca/maxCA*100),2);
+      var isCurrentMonth = mo.mois === (y+'-'+String(new Date().getMonth()+1).padStart(2,'0'));
+      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="'+mo.mois+' : '+fmtMAD(mo.ca)+'">';
+      html += '<div style="font-size:7px;color:#64748b">'+fmtMAD(mo.ca).replace(' MAD','').replace(',00','')+'</div>';
+      html += '<div style="width:100%;height:'+h+'px;background:'+(isCurrentMonth?'linear-gradient(to top,#7c3aed,#a78bfa)':'linear-gradient(to top,#1a5fb4,#5a9fd4)')+';border-radius:3px 3px 0 0;min-height:2px"></div>';
       html += '<div style="font-size:8px;color:#334155">'+(mo.mois||'').slice(5)+'</div></div>';
     });
     html += '</div>';
-  } else { html += '<p style="color:#64748b">Aucune donnee</p>'; }
+  } else { html += '<p style="color:#64748b;text-align:center;padding:30px">Aucune donnée facturée</p>'; }
   html += '</div>';
+
+  // ── Colonne droite ──
   html += '<div style="display:flex;flex-direction:column;gap:12px">';
-  html += '<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Echeances legales</div>';
-  html += '<div style="padding:8px;background:#22c55e15;border-radius:8px;margin-bottom:6px"><div style="font-size:11px;color:#22c55e;font-weight:700">CNSS — le '+m+'/'+y+'</div><div style="font-size:10px;color:#64748b">CNSS + AMO Damancom</div></div>';
-  html += '<div style="padding:8px;background:#1a5fb415;border-radius:8px;margin-bottom:6px"><div style="font-size:11px;color:#1a5fb4;font-weight:700">IR — le '+m+'/'+y+'</div><div style="font-size:10px;color:#64748b">Retenue source DGI</div></div>';
-  html += '<div style="padding:8px;background:#f59e0b15;border-radius:8px"><div style="font-size:11px;color:#f59e0b;font-weight:700">SMIG 2026: '+smig+' MAD</div><div style="font-size:10px;color:#64748b">Art.356 Code travail</div></div>';
+
+  // Taux conversion
+  html += '<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🎯 Taux conversion</div>';
+  html += '<div style="text-align:center;padding:8px 0">';
+  html += '<div style="font-size:32px;font-weight:900;color:'+(tauxConv>=50?'#22c55e':tauxConv>=25?'#f59e0b':'#ef4444')+'">'+tauxConv+'%</div>';
+  html += '<div style="font-size:10px;color:#64748b">Devis → Factures</div>';
+  html += '<div style="background:#e2e8f0;border-radius:6px;height:6px;margin-top:8px"><div style="height:6px;border-radius:6px;background:'+(tauxConv>=50?'#22c55e':tauxConv>=25?'#f59e0b':'#ef4444')+';width:'+tauxConv+'%"></div></div>';
+  html += '</div></div>';
+
+  // Écheances légales
+  html += '<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ Échéances légales</div>';
+  html += '<div style="padding:7px;background:#22c55e15;border-radius:8px;margin-bottom:5px"><div style="font-size:11px;color:#22c55e;font-weight:700">CNSS — le 10/'+m+'/'+y+'</div><div style="font-size:10px;color:#64748b">CNSS + AMO Damancom</div></div>';
+  html += '<div style="padding:7px;background:#1a5fb415;border-radius:8px;margin-bottom:5px"><div style="font-size:11px;color:#1a5fb4;font-weight:700">IR — le 20/'+m+'/'+y+'</div><div style="font-size:10px;color:#64748b">Retenue source DGI</div></div>';
+  html += '<div style="padding:7px;background:#f59e0b15;border-radius:8px"><div style="font-size:11px;color:#f59e0b;font-weight:700">SMIG 2026: '+smig+' MAD</div></div>';
   html += '</div>';
-  html += '<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Actions rapides</div>';
-  html += '<button class="btn btn-blue" style="width:100%;margin-bottom:6px" onclick="showPage(\'facturation\')">Nouvelle facture</button>';
-  html += '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="showPage(\'devis\')">Nouveau devis</button>';
-  html += '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="showPage(\'paie\')">Bulletins paie</button>';
-  html += '<button class="btn btn-ghost" style="width:100%" onclick="showPage(\'clients\')">Nouveau client</button>';
-  html += '</div></div></div>';
+  html += '</div></div>';
+
+  // ── Ligne 2 : Rappels + Top clients ──
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+
+  // 🔔 Rappels échéances
+  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">🔔 Rappels échéances';
+  if (rappels.length > 0) html += ' <span style="background:#ef4444;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px">'+rappels.length+'</span>';
+  html += '</div>';
+  if (rappels.length === 0) {
+    html += '<div style="color:#64748b;text-align:center;padding:20px;font-size:12px">✅ Aucune échéance urgente</div>';
+  } else {
+    rappels.slice(0,6).forEach(function(r){
+      var diff = r.diff;
+      var color = diff < 0 ? '#ef4444' : diff <= 3 ? '#f59e0b' : '#1a5fb4';
+      var label = diff < 0 ? 'En retard '+Math.abs(diff)+'j' : diff === 0 ? "Aujourd'hui !" : 'Dans '+diff+' j';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:'+color+'10;border-left:3px solid '+color+';border-radius:0 8px 8px 0;margin-bottom:6px">';
+      html += '<div><div style="font-size:11px;font-weight:700;color:'+color+'">'+label+'</div>';
+      html += '<div style="font-size:10px;color:#64748b">'+(r.doc.tiers_nom||'—')+' · '+fmtMAD(r.doc.total_ttc)+'</div></div>';
+      html += '<button onclick="whatsappDoc('+r.doc.id+')" style="background:#25D36620;border:1px solid #25D366;color:#25D366;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">📲 Relancer</button>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  // 🏆 Top clients
+  html += '<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px">🏆 Top clients</div>';
+  if (topClients.length === 0) {
+    html += '<div style="color:#64748b;text-align:center;padding:20px;font-size:12px">Aucune facture validée</div>';
+  } else {
+    var maxVal = topClients[0][1];
+    topClients.forEach(function(c, i){
+      var pct = Math.round(c[1]/maxVal*100);
+      var medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">';
+      html += '<span>'+medals[i]+' '+(c[0].length>20?c[0].slice(0,20)+'…':c[0])+'</span>';
+      html += '<span style="font-weight:700;color:#1a5fb4">'+fmtMAD(c[1])+'</span></div>';
+      html += '<div style="background:#e2e8f0;border-radius:4px;height:5px"><div style="height:5px;border-radius:4px;background:linear-gradient(to right,#1a5fb4,#7c3aed);width:'+pct+'%"></div></div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  html += '</div>';
+
   el.innerHTML = html;
 }
 
@@ -779,7 +874,8 @@ function renderDocs(type, label, icon) {
         (d.type==='bon_commande'?'<button class="btn btn-success btn-sm" onclick="convertDoc('+d.id+',\'bon_livraison\')">→BL</button>':'')+
         (d.type==='bon_livraison'?'<button class="btn btn-success btn-sm" onclick="convertDoc('+d.id+',\'facture\')">→FA</button>':'')+
         (d.type==='facture'?'<button class="btn btn-warning btn-sm" onclick="convertDoc('+d.id+',\'avoir\')">→AV</button>':'')+
-        '<button class="btn btn-ghost btn-sm" onclick="printDoc('+d.id+')">🖨</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="printDoc('+d.id+')" title="Imprimer">🖨</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="whatsappDoc('+d.id+')" title="Envoyer WhatsApp" style="background:#25D36620;border-color:#25D366;color:#25D366">📲</button>'+
         '<button class="btn btn-danger btn-sm" onclick="delDoc('+d.id+')">✕</button>'+
         '</div></td></tr>';
     });
@@ -4593,7 +4689,95 @@ async function iaOuvrirForm(doc) {
   }
 }
 
-// Enter key in IA input
+
+// ══════════════════════════════════════════════════════════
+//  WHATSAPP — Envoyer document
+// ══════════════════════════════════════════════════════════
+async function whatsappDoc(id) {
+  try {
+    var doc = await api('GET', '/api/documents/'+id);
+    var typeLabels = {facture:'Facture',devis:'Devis',proforma:'Proforma',bon_commande:'Bon de Commande',bon_livraison:'Bon de Livraison',avoir:'Avoir'};
+    var tLabel = typeLabels[doc.type]||doc.type;
+    var acc = currentAccount;
+    var ttc = (doc.total_ttc||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2});
+    var ech = doc.date_echeance ? '\n📅 Échéance : '+fmtDate(doc.date_echeance) : '';
+    var msg =
+      '🏢 *'+( acc.company_name||'PMEGest')+'*\n'+
+      '━━━━━━━━━━━━━━━━\n'+
+      '📄 *'+tLabel+' N° '+doc.numero+'*\n'+
+      '👤 Client : '+(doc.tiers_nom||'—')+'\n'+
+      '💰 Montant TTC : *'+ttc+' MAD*'+ech+'\n'+
+      '━━━━━━━━━━━━━━━━\n'+
+      '✅ Merci pour votre confiance !\n'+
+      '_PMEGest.ma — Gestion PME Maroc 2026_';
+
+    // Get client phone if available
+    var tiers = state.tiers.find(function(t){return t.id==doc.tiers_id;});
+    var phone = tiers ? (tiers.telephone||'').replace(/\D/g,'') : '';
+    if (phone && phone.startsWith('0')) phone = '212'+phone.slice(1);
+
+    var url = 'https://wa.me/'+(phone||'')+' ?text='+encodeURIComponent(msg);
+    window.open(url.replace(' ',''), '_blank');
+  } catch(e) {
+    toast('Erreur WhatsApp: '+(e.error||e.message),'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  OCR — Scanner une facture fournisseur
+// ══════════════════════════════════════════════════════════
+function iaOCR() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  input.onchange = async function() {
+    var file = input.files[0];
+    if (!file) return;
+    iaToggle(); // open IA panel
+    setTimeout(function(){
+      iaAddMsg('user', '📷 Analyse de la facture : <em>'+file.name+'</em>');
+      iaAddTyping();
+    }, 300);
+
+    try {
+      // Convert file to base64
+      var base64 = await new Promise(function(res,rej){
+        var r = new FileReader();
+        r.onload = function(){ res(r.result.split(',')[1]); };
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+
+      var isImage = file.type.startsWith('image/');
+      var response = await fetch('/api/ia/ocr-facture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+localStorage.getItem('pmegest_token') },
+        body: JSON.stringify({ base64: base64, mime: file.type, isImage: isImage })
+      });
+      var result = await response.json();
+      iaRemoveTyping();
+
+      if (result.success && result.document) {
+        window._iaLastDoc = result.document;
+        var doc = result.document;
+        var totalHT = (doc.lignes||[]).reduce(function(s,l){return s+(l.quantite*l.prix_unit_ht);},0);
+        iaAddMsg('assistant',
+          '✅ Facture analysée avec succès !<br>'+
+          '🏢 Fournisseur : <strong>'+(doc.tiers_nom||'—')+'</strong><br>'+
+          (doc.lignes||[]).length+' ligne(s) · Total HT : <strong>'+fmtMAD(totalHT)+'</strong><br><br>'+
+          '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">🚀 Créer et afficher le document</button>'
+        );
+      } else {
+        iaAddMsg('assistant', '❌ '+(result.error||'Impossible d\'analyser cette image. Essayez avec une photo plus nette.'));
+      }
+    } catch(e) {
+      iaRemoveTyping();
+      iaAddMsg('assistant', '❌ Erreur OCR : '+(e.message||'Réessayez'));
+    }
+  };
+  input.click();
+}
+
 document.addEventListener('keydown', function(e) {
   var input = document.getElementById('iaInput');
   if (e.target === input && e.key === 'Enter' && !e.shiftKey) {
@@ -4625,6 +4809,7 @@ document.addEventListener('keydown', function(e) {
       <button onclick="document.getElementById('iaInput').value='Facture client Alami, 2 jours conseil à 3500 DH HT, TVA 20%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Facture conseil</button>
       <button onclick="document.getElementById('iaInput').value='Devis travaux peinture villa, 180m² à 85 DH/m², TVA 14%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Devis BTP</button>
       <button onclick="document.getElementById('iaInput').value='Bon de commande fournisseur, 50 chaises bureau à 450 DH, TVA 20%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Bon commande</button>
+      <button onclick="iaOCR()" style="font-size:10px;padding:4px 8px;background:#1a5fb420;border:1px solid #1a5fb4;border-radius:12px;cursor:pointer;color:#1a5fb4">📷 Scanner facture</button>
     </div>
   </div>
 
