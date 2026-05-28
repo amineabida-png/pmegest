@@ -829,30 +829,34 @@ app.post('/api/ia/transcription', auth, async (req, res) => {
     const baseMime = (mime || 'audio/mp4').split(';')[0].trim();
     const extMap = { 'audio/webm':'webm','audio/mp4':'mp4','audio/ogg':'ogg','audio/wav':'wav','audio/mpeg':'mp3','audio/x-m4a':'m4a','audio/aac':'m4a','video/mp4':'mp4' };
     const ext = extMap[baseMime] || 'm4a';
-    const fileMime = baseMime;
     const langMap = { 'fr':'fr','ar':'ar','ar-MA':'ar' };
     const whisperLang = langMap[lang] || 'fr';
+    const boundary = `----PMEGest${Date.now()}`;
 
-    // Pure Node.js multipart — no external deps
-    const boundary = 'PMEGestBoundary' + Date.now();
-    const CRLF = Buffer.from('\r\n');
-    const parts = [];
+    // Build each part as a single Buffer with proper CRLF
+    const enc = s => Buffer.from(s, 'utf8');
+    const field = (name, value) => Buffer.concat([
+      enc(`--${boundary}\r\n`),
+      enc(`Content-Disposition: form-data; name="${name}"\r\n\r\n`),
+      enc(value),
+      enc('\r\n')
+    ]);
+    const filepart = Buffer.concat([
+      enc(`--${boundary}\r\n`),
+      enc(`Content-Disposition: form-data; name="file"; filename="voice.${ext}"\r\n`),
+      enc(`Content-Type: ${baseMime}\r\n\r\n`),
+      audioBuffer,
+      enc('\r\n')
+    ]);
+    const closing = enc(`--${boundary}--\r\n`);
 
-    const addField = (name, value) => {
-      parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}`));
-      parts.push(CRLF);
-    };
-    addField('model', 'whisper-large-v3');
-    addField('language', whisperLang);
-    addField('response_format', 'json');
-
-    // Audio file part
-    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="voice.${ext}"\r\nContent-Type: ${fileMime}\r\n\r\n`));
-    parts.push(audioBuffer);
-    parts.push(CRLF);
-    parts.push(Buffer.from(`--${boundary}--\r\n`));
-
-    const body = Buffer.concat(parts);
+    const body = Buffer.concat([
+      field('model', 'whisper-large-v3'),
+      field('language', whisperLang),
+      field('response_format', 'json'),
+      filepart,
+      closing
+    ]);
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
@@ -865,10 +869,8 @@ app.post('/api/ia/transcription', auth, async (req, res) => {
     });
 
     const rawText = await response.text();
-    console.log(`[Whisper] status=${response.status} resp=${rawText.slice(0, 200)}`);
-
+    console.log(`[Whisper] status=${response.status} resp=${rawText.slice(0,300)}`);
     if (!response.ok) return res.status(500).json({ error: 'Whisper: ' + rawText });
-
     const data = JSON.parse(rawText);
     res.json({ success: true, text: (data.text || '').trim() });
   } catch(e) {
