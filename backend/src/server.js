@@ -495,9 +495,10 @@ app.get('/api/documents/:id',auth,(req,res)=>{
 });
 app.post('/api/documents',auth,(req,res)=>{
   const d=req.body;if(!d.type||!d.date_doc)return res.status(400).json({error:'Type et date requis'});
-  const numero=d.numero||nextNumero(req.account.id,d.type);
+  // Support numero_force from IA
+  const numero = d.numero_force || d.numero || nextNumero(req.account.id,d.type);
   if(db.prepare('SELECT id FROM documents WHERE account_id=? AND type=? AND numero=?').get(req.account.id,d.type,numero))
-    return res.status(400).json({error:'Numero deja existant'});
+    return res.status(400).json({error:'Numéro déjà existant: '+numero});
   const lignes=d.lignes||[];let ht=0,tva=0;
   const tx=db.transaction(()=>{
     const r=db.prepare('INSERT INTO documents (account_id,type,numero,date_doc,date_echeance,tiers_id,tiers_nom,tiers_ice,tiers_if,tiers_adresse,tiers_ville,statut,total_ht,total_tva,total_ttc,mode_paiement,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,?,?)')
@@ -958,64 +959,82 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 app.post('/api/ia/generer-document', auth, async (req, res) => {
   try {
-    const { prompt, tiers, articles } = req.body;
-    if (!GROQ_API_KEY) return res.status(500).json({ error: 'Clé Groq non configurée. Ajoutez GROQ_API_KEY dans les variables Railway.' });
+    const { prompt, tiers, articles, docActuel } = req.body;
+    if (!GROQ_API_KEY) return res.status(500).json({ error: 'Clé Groq non configurée.' });
 
     const tiersInfo = tiers && tiers.length > 0
-      ? 'Clients/Fournisseurs disponibles: ' + tiers.map(t => `"${t.raison_sociale}" (id:${t.id}, ville:${t.ville||''})`).join(', ')
-      : 'Aucun tiers enregistré';
+      ? tiers.map(t => `id:${t.id} "${t.raison_sociale}" ville:${t.ville||''} tel:${t.telephone||''}`).join(' | ')
+      : 'Aucun';
     const articlesInfo = articles && articles.length > 0
-      ? 'Articles disponibles: ' + articles.map(a => `"${a.designation}" (id:${a.id}, prix_ht:${a.prix_vente_ht}, tva:${a.taux_tva}%)`).join(', ')
-      : 'Aucun article enregistré';
+      ? articles.map(a => `id:${a.id} "${a.designation}" pu_ht:${a.prix_vente_ht} tva:${a.taux_tva}%`).join(' | ')
+      : 'Aucun';
+    const docActuelInfo = docActuel
+      ? `\nDOCUMENT ACTUEL À MODIFIER: ${JSON.stringify(docActuel)}`
+      : '';
 
-    const systemPrompt = `Tu es un assistant de facturation pour PME marocaine. Tu analyses la demande en français ou darija et tu génères UNIQUEMENT un objet JSON valide, sans markdown, sans texte avant ou après.
+    const today = new Date().toISOString().split('T')[0];
 
-Le JSON doit avoir exactement cette structure:
+    const systemPrompt = `Tu es l'assistant IA de PMEGest.ma, expert en facturation PME marocaine.
+Tu comprends le français, l'arabe (فصحى) et la darija marocaine (دارجة).
+Tu génères UNIQUEMENT un objet JSON valide. Aucun texte avant ou après. Aucun markdown.
+
+${docActuelInfo ? '⚠️ MODE MODIFICATION: le document actuel est fourni. Applique UNIQUEMENT les changements demandés et conserve le reste.' : ''}
+
+STRUCTURE JSON OBLIGATOIRE:
 {
-  "type": "facture|devis|proforma|bon_commande|bon_livraison|avoir",
-  "tiers_id": null ou number (id du client si trouvé dans la liste),
-  "tiers_nom": "Nom du client/fournisseur",
-  "tiers_adresse": "Adresse si mentionnée",
-  "tiers_ville": "Ville si mentionnée",
-  "date_doc": "YYYY-MM-DD (aujourd'hui si non précisé)",
-  "echeance": "YYYY-MM-DD (30 jours après si non précisé pour facture)",
-  "mode_paiement": "virement|cheque|especes|carte",
-  "notes": "Notes ou conditions particulières",
+  "action": "creer" | "modifier",
+  "type": "facture" | "devis" | "proforma" | "bon_commande" | "bon_livraison" | "avoir",
+  "numero_force": null | "string (si l'utilisateur demande un numéro spécifique)",
+  "tiers_id": null | number,
+  "tiers_nom": "string",
+  "tiers_adresse": "string",
+  "tiers_ville": "string",
+  "tiers_ice": "string",
+  "date_doc": "YYYY-MM-DD",
+  "echeance": "YYYY-MM-DD",
+  "mode_paiement": "virement" | "cheque" | "especes" | "carte",
+  "notes": "string",
   "lignes": [
     {
-      "designation": "Description de la ligne",
+      "designation": "string",
       "quantite": number,
       "prix_unit_ht": number,
-      "taux_tva": 0|7|10|14|20
+      "taux_tva": 0 | 7 | 10 | 14 | 20,
+      "unite": "U" | "H" | "M2" | "KG" | "T" | "L" | "ML" | "F"
     }
   ]
 }
 
-Règles importantes:
-- Monnaie = MAD (dirhams marocains)
-- TVA Maroc: 0%, 7% (eau/électricité), 10% (restauration/transport), 14% (électricité/banques), 20% (standard)
-- Si le type n'est pas précisé, utilise "facture"
-- Si la TVA n'est pas précisée, utilise 20%
-- Date aujourd'hui: ${new Date().toISOString().split('T')[0]}
-- ${tiersInfo}
-- ${articlesInfo}
-- Si un client de la liste correspond, mets son id dans tiers_id
-- Si un article de la liste correspond, utilise son prix et sa TVA`;
+RÈGLES PRÉCISES:
+- Aujourd'hui: ${today}
+- Échéance défaut: 30 jours (facture), même jour (devis/BL/BC)
+- Monnaie: MAD. Interpréter "DH", "درهم", "دراهم" = MAD
+- TVA Maroc: 0% (exonéré), 7% (eau/élec), 10% (restauration/hôtels/transport), 14% (électricité/banques/BTP), 20% (standard)
+- Si TVA non précisée: 20%
+- Nombres: "ألف"=1000, "مليون"=1000000, "مية"=100, "ميتين"=200, "خمسة آلاف"=5000
+- Types darija: "فاتورة"/"فاكتورة"=facture, "ديفي"/"ديفيس"=devis, "بروفورما"=proforma, "بون دو كومون"=bon_commande, "بون دو ليفريزون"=bon_livraison
+- numero_force: si l'utilisateur dit "numéro X", "رقم X", "الرقم X", mets X dans numero_force
+- Unités: si "heure/ساعة"→H, "m²/متر مربع"→M2, "kg/كيلو"→KG, "tonne/طن"→T, "litre"→L, "ml/متر طولي"→ML, "forfait/جزافي"→F, sinon→U
+- Clients disponibles: ${tiersInfo}
+- Articles disponibles: ${articlesInfo}
+- Si client de la liste correspond (même partiel), utilise son id
+- Si article de la liste correspond, utilise son prix et TVA
+- action="modifier" si le prompt parle de changer/modifier/corriger un document existant`;
+
+    const messages = [{ role: 'system', content: systemPrompt }];
+    if (docActuel) {
+      messages.push({ role: 'assistant', content: JSON.stringify(docActuel) });
+    }
+    messages.push({ role: 'user', content: prompt });
 
     const response = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 1500
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.05,
+        max_tokens: 2000
       })
     });
 
@@ -1026,14 +1045,15 @@ Règles importantes:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-
-    // Parse JSON — clean markdown fences if present
     const clean = content.replace(/```json|```/g, '').trim();
+
     let parsed;
-    try {
-      parsed = JSON.parse(clean);
-    } catch(e) {
-      return res.status(500).json({ error: 'Réponse IA non valide. Réessayez avec plus de détails.', raw: clean });
+    try { parsed = JSON.parse(clean); }
+    catch(e) {
+      // Try to extract JSON from response
+      const match = clean.match(/\{[\s\S]*\}/);
+      if (match) { try { parsed = JSON.parse(match[0]); } catch(e2) {} }
+      if (!parsed) return res.status(500).json({ error: 'Réponse IA invalide. Réessayez.', raw: clean.slice(0,200) });
     }
 
     res.json({ success: true, document: parsed });

@@ -4588,33 +4588,46 @@ async function iaEnvoyer() {
   var txt = input.value.trim();
   if (!txt) return;
   input.value = '';
+  input.style.borderColor = '';
 
   iaAddMsg('user', txt.replace(/</g,'&lt;'));
   iaAddTyping();
+
+  // Détecter si c'est une modification d'un doc existant
+  var isModif = window._iaLastDoc && /modif|change|correct|remplace|numéro|numero|رقم|بدّل|غيّر|حوّل/i.test(txt);
 
   try {
     var result = await api('POST', '/api/ia/generer-document', {
       prompt: txt,
       tiers: state.tiers || [],
-      articles: state.articles || []
+      articles: state.articles || [],
+      docActuel: isModif ? window._iaLastDoc : null
     });
 
     iaRemoveTyping();
     var doc = result.document;
     var typeLabels = {facture:'Facture',devis:'Devis',proforma:'Proforma',bon_commande:'Bon de Commande',bon_livraison:'Bon de Livraison',avoir:'Avoir'};
     var tLabel = typeLabels[doc.type] || doc.type;
-    var nbLignes = doc.lignes ? doc.lignes.length : 0;
+    var nbLignes = (doc.lignes||[]).length;
     var totalHT = (doc.lignes||[]).reduce(function(s,l){return s+(l.quantite*l.prix_unit_ht);},0);
+    var totalTVA = (doc.lignes||[]).reduce(function(s,l){return s+(l.quantite*l.prix_unit_ht*l.taux_tva/100);},0);
 
     window._iaLastDoc = doc;
+
+    var extra = '';
+    if (doc.numero_force) extra += '<br>🔢 Numéro : <strong>' + doc.numero_force + '</strong>';
+    if (doc.mode_paiement) extra += '<br>💳 Paiement : ' + doc.mode_paiement;
+    if (isModif) extra = '<br>✏️ <em>Document modifié selon votre demande</em>' + extra;
+
     iaAddMsg('assistant',
-      '✅ <strong>' + tLabel + '</strong> générée pour <strong>' + (doc.tiers_nom||'—') + '</strong><br>' +
-      nbLignes + ' ligne(s) · Total HT : <strong>' + fmtMAD(totalHT) + '</strong><br><br>' +
-      '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">🚀 Créer et afficher le document</button>'
+      (isModif ? '✏️' : '✅') + ' <strong>' + tLabel + '</strong> — <strong>' + (doc.tiers_nom||'—') + '</strong><br>' +
+      nbLignes + ' ligne(s) · HT : <strong>' + fmtMAD(totalHT) + '</strong> · TTC : <strong>' + fmtMAD(totalHT+totalTVA) + '</strong>' +
+      extra + '<br><br>' +
+      '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">🚀 Créer et afficher</button>'
     );
   } catch(e) {
     iaRemoveTyping();
-    iaAddMsg('assistant', '❌ Erreur : ' + (e.error || e.message || 'Réessayez') + '<br><small>Astuce : soyez plus précis (nom client, montants, type de document)</small>');
+    iaAddMsg('assistant', '❌ ' + (e.error || e.message || 'Réessayez') + '<br><small>Soyez précis : nom client, montant, type de document</small>');
   }
 }
 
@@ -4646,7 +4659,7 @@ async function iaOuvrirForm(doc) {
         prix_unit_ht: l.prix_unit_ht||0,
         taux_tva: l.taux_tva||20,
         taux_remise: 0,
-        unite: 'U'
+        unite: l.unite || 'U'
       };
     });
 
@@ -4659,13 +4672,14 @@ async function iaOuvrirForm(doc) {
       date_echeance: due,
       tiers_id: tiers ? tiers.id : null,
       tiers_nom: tiers ? tiers.raison_sociale : (doc.tiers_nom||''),
-      tiers_ice: tiers ? (tiers.ice||'') : '',
+      tiers_ice: tiers ? (tiers.ice||'') : (doc.tiers_ice||''),
       tiers_if: tiers ? (tiers.if_fiscal||'') : '',
       tiers_adresse: tiers ? (tiers.adresse||'') : (doc.tiers_adresse||''),
       tiers_ville: tiers ? (tiers.ville||'') : (doc.tiers_ville||''),
       statut: 'brouillon',
       mode_paiement: doc.mode_paiement || 'virement',
       notes: doc.notes || 'Créé par Assistant IA PMEGest',
+      numero_force: doc.numero_force || null,
       lignes: lignes
     };
 
