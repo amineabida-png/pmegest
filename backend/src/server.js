@@ -852,9 +852,12 @@ app.post('/api/ia/transcription', auth, async (req, res) => {
     const closing = enc(`--${boundary}--\r\n`);
 
     const body = Buffer.concat([
-      field('model', 'whisper-large-v3'),
+      field('model', 'whisper-large-v3-turbo'),
       field('language', whisperLang),
       field('response_format', 'json'),
+      field('prompt', whisperLang === 'fr'
+        ? 'Facture, devis, bon de commande, bon de livraison, TVA, HT, TTC, dirhams, MAD, client, fournisseur, prestation, quantité, montant, échéance, numéro.'
+        : 'فاتورة، عرض أسعار، أمر شراء، ضريبة القيمة المضافة، درهم، عميل، مورد، خدمة، كمية، مبلغ، موعد.'),
       filepart,
       closing
     ]);
