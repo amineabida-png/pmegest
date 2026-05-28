@@ -1750,12 +1750,15 @@ async function renderSuperAdmin() {
   } catch(e) {}
   var pending = trials.filter(function(t){return t.status==='en_attente';});
   var clients = accounts.filter(function(a){return a.role!=='super';});
-  var html = '<div class="page-header"><div><div class="page-title">Super Admin</div>';
-  html += '<div class="page-sub">'+clients.length+' comptes · '+pending.length+' demande(s)</div></div>';
-  html += '<button class="btn btn-blue" onclick="createAccount()">+ Creer compte</button></div>';
+
+  var html = '<div class="page-header"><div><div class="page-title">👑 Super Admin</div>';
+  html += '<div class="page-sub">'+clients.length+' compte(s) · '+pending.length+' demande(s) en attente</div></div>';
+  html += '<button class="btn btn-blue" onclick="createAccount()">+ Créer compte</button></div>';
+
+  // Demandes en attente
   if (pending.length > 0) {
     html += '<div class="card" style="border:1px solid #1a5fb440;margin-bottom:14px">';
-    html += '<div style="font-size:14px;font-weight:700;color:#1a5fb4;margin-bottom:10px">Demandes essai ('+pending.length+')</div>';
+    html += '<div style="font-size:14px;font-weight:700;color:#1a5fb4;margin-bottom:10px">🔔 Demandes essai ('+pending.length+')</div>';
     pending.forEach(function(r) {
       html += '<div style="padding:10px;background:#ffffff06;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">'+
         '<div><div style="font-weight:700">'+r.prenom+' '+r.nom+' · <span style="color:#1a5fb4">'+r.societe+'</span></div>'+
@@ -1765,23 +1768,38 @@ async function renderSuperAdmin() {
     });
     html += '</div>';
   }
+
+  // Tableau comptes
   html += '<div class="card"><div class="table-wrap"><table>';
-  html += '<thead><tr><th>Nom</th><th>Email</th><th>Plan</th><th>Expiration</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+  html += '<thead><tr><th>Nom / Société</th><th>Email</th><th>Durée</th><th>Expiration</th><th>Statut</th><th style="text-align:center">Actions</th></tr></thead><tbody>';
   if (clients.length === 0) {
-    html += '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucun compte</td></tr>';
+    html += '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:30px">Aucun compte créé</td></tr>';
   } else {
     clients.forEach(function(a) {
-      var days = a.plan==='enterprise'?'∞':Math.max(0,Math.ceil((new Date(a.expires_at)-new Date())/86400000))+'j';
+      var now = new Date();
+      var exp = a.expires_at ? new Date(a.expires_at) : null;
+      var isEnterprise = a.plan === 'enterprise';
+      var daysLeft = isEnterprise ? '∞' : (exp ? Math.max(0, Math.ceil((exp - now) / 86400000)) + 'j' : '—');
+      var expired = !isEnterprise && exp && exp < now;
+      var dureeLabel = a.plan === 'enterprise' ? '♾️ À vie' : a.plan === 'pro' ? '📅 1 An' : a.plan === 'starter' ? '🗓️ 30 Jours' : '⏱️ Essai';
+      var dureeColor = a.plan === 'enterprise' ? '#22c55e' : a.plan === 'pro' ? '#1a5fb4' : a.plan === 'starter' ? '#f59e0b' : '#64748b';
+
       html += '<tr>'+
-        '<td style="font-weight:700">'+a.name+'<div style="font-size:11px;color:#64748b">'+(a.company_name||'-')+'</div></td>'+
+        '<td><div style="font-weight:700">'+a.name+'</div><div style="font-size:11px;color:#64748b">'+(a.company_name||'—')+'</div></td>'+
         '<td style="font-size:12px;color:#64748b">'+a.email+'</td>'+
-        '<td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#1a5fb415;color:#1a5fb4">'+a.plan+'</span></td>'+
-        '<td style="font-size:12px;color:#64748b">'+(a.expires_at||'-').slice(0,10)+' ('+days+')</td>'+
-        '<td>'+badge(a.status==='active'?'actif':'archive')+'</td>'+
-        '<td><div style="display:flex;gap:4px">'+
-        '<button class="btn btn-ghost btn-sm" onclick="editAccount('+a.id+')">Modifier</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deleteAccount('+a.id+')">Suppr</button>'+
-        '</div></td></tr>';
+        '<td><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:'+dureeColor+'20;color:'+dureeColor+'">'+dureeLabel+'</span></td>'+
+        '<td style="font-size:12px;color:'+(expired?'#ef4444':'#64748b')+'">'+
+          (isEnterprise ? '—' : (a.expires_at||'—').slice(0,10))+
+          '<div style="font-size:10px">'+(expired?'⚠️ Expiré':''+daysLeft)+'</div>'+
+        '</td>'+
+        '<td>'+badge(a.status==='active'&&!expired?'actif':'archive')+'</td>'+
+        '<td>'+
+          '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">'+
+          '<button class="btn btn-ghost btn-sm" onclick="resetPassword('+a.id+',\''+a.name+'\')" title="Reset mot de passe">🔑 MDP</button>'+
+          '<button class="btn btn-ghost btn-sm" onclick="changeDuree('+a.id+',\''+a.name+'\',\''+a.plan+'\')" title="Changer durée">⏱️ Durée</button>'+
+          '<button class="btn btn-danger btn-sm" onclick="deleteAccount('+a.id+')">✕</button>'+
+          '</div>'+
+        '</td></tr>';
     });
   }
   html += '</tbody></table></div></div>';
@@ -1789,31 +1807,130 @@ async function renderSuperAdmin() {
 }
 
 function createAccount() {
-  openModal('Creer un compte',
+  openModal('➕ Créer un compte',
     '<div class="form-grid">'+
-    '<div class="form-field"><label>Nom</label><input id="ac_name"></div>'+
-    '<div class="form-field"><label>Email</label><input type="email" id="ac_email"></div>'+
-    '<div class="form-field"><label>Mot de passe</label><input type="password" id="ac_pass"></div>'+
-    '<div class="form-field"><label>Societe</label><input id="ac_soc"></div>'+
-    '<div class="form-field full"><label>Plan</label><select id="ac_plan"><option value="trial">Essai 48h</option><option value="starter">Starter 30j — 399 MAD</option><option value="pro">Pro 1an — 799 MAD</option><option value="enterprise">Enterprise</option></select></div>'+
+    '<div class="form-field"><label>Nom complet</label><input id="ac_name" placeholder="Ex: Ahmed Benali"></div>'+
+    '<div class="form-field"><label>Email</label><input type="email" id="ac_email" placeholder="ahmed@societe.ma"></div>'+
+    '<div class="form-field"><label>Mot de passe</label><input type="password" id="ac_pass" placeholder="Min. 6 caractères"></div>'+
+    '<div class="form-field"><label>Société</label><input id="ac_soc" placeholder="Nom de la société"></div>'+
+    '<div class="form-field full"><label>Durée d\'accès</label>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px" id="ac_plan_grid">'+
+      '<div onclick="selectPlan(\'starter\')" id="plan_starter" style="padding:12px;border:2px solid #f59e0b;border-radius:10px;cursor:pointer;text-align:center;background:#f59e0b20">'+
+        '<div style="font-size:18px">🗓️</div><div style="font-weight:700;color:#f59e0b;font-size:12px">30 Jours</div></div>'+
+      '<div onclick="selectPlan(\'pro\')" id="plan_pro" style="padding:12px;border:2px solid #0f1e35;border-radius:10px;cursor:pointer;text-align:center">'+
+        '<div style="font-size:18px">📅</div><div style="font-weight:700;color:#64748b;font-size:12px">1 An</div></div>'+
+      '<div onclick="selectPlan(\'enterprise\')" id="plan_enterprise" style="padding:12px;border:2px solid #0f1e35;border-radius:10px;cursor:pointer;text-align:center">'+
+        '<div style="font-size:18px">♾️</div><div style="font-weight:700;color:#64748b;font-size:12px">À vie</div></div>'+
+    '</div>'+
+    '<input type="hidden" id="ac_plan" value="starter">'+
+    '</div>'+
     '</div>',
     '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
-    '<button class="btn btn-blue" onclick="saveNewAccount()">Creer</button>'
+    '<button class="btn btn-blue" onclick="saveNewAccount()">✅ Créer</button>'
   );
+}
+
+function selectPlan(plan) {
+  document.getElementById('ac_plan').value = plan;
+  ['starter','pro','enterprise'].forEach(function(p) {
+    var el = document.getElementById('plan_'+p);
+    if (!el) return;
+    var colors = {starter:'#f59e0b', pro:'#1a5fb4', enterprise:'#22c55e'};
+    if (p === plan) {
+      el.style.borderColor = colors[p];
+      el.style.background = colors[p]+'20';
+      el.querySelector('div:last-child').style.color = colors[p];
+    } else {
+      el.style.borderColor = '#0f1e35';
+      el.style.background = 'transparent';
+      el.querySelector('div:last-child').style.color = '#64748b';
+    }
+  });
 }
 
 async function saveNewAccount() {
   var d = {
-    name: document.getElementById("ac_name").value,
-    email: document.getElementById("ac_email").value,
+    name: document.getElementById("ac_name").value.trim(),
+    email: document.getElementById("ac_email").value.trim(),
     password: document.getElementById("ac_pass").value,
-    company_name: document.getElementById("ac_soc").value,
+    company_name: document.getElementById("ac_soc").value.trim(),
     plan: document.getElementById("ac_plan").value
   };
-  if (!d.name||!d.email||!d.password) return toast('Nom, email et MDP requis','error');
+  if (!d.name||!d.email||!d.password) return toast('Nom, email et mot de passe requis','error');
+  if (d.password.length < 6) return toast('Mot de passe trop court (min 6 caractères)','error');
   try {
     await api('POST','/api/admin/accounts',d);
-    closeModal(); renderSuperAdmin(); toast('Compte cree','success');
+    closeModal(); renderSuperAdmin();
+    toast('✅ Compte créé : '+d.email+' / '+d.password,'success');
+  } catch(e) { toast(e.error||'Erreur création','error'); }
+}
+
+function resetPassword(id, name) {
+  openModal('🔑 Reset mot de passe — '+name,
+    '<div style="padding:12px;background:#f59e0b15;border:1px solid #f59e0b40;border-radius:8px;margin-bottom:14px;font-size:13px;color:#f59e0b">'+
+    '⚠️ Le nouveau mot de passe sera actif immédiatement.</div>'+
+    '<div class="form-grid">'+
+    '<div class="form-field full"><label>Nouveau mot de passe</label><input type="text" id="rp_pass" placeholder="Min. 6 caractères"></div>'+
+    '</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveResetPassword('+id+')">🔑 Changer</button>'
+  );
+}
+
+async function saveResetPassword(id) {
+  var pass = document.getElementById("rp_pass").value.trim();
+  if (!pass || pass.length < 6) return toast('Mot de passe trop court (min 6 caractères)','error');
+  try {
+    await api('PUT','/api/admin/accounts/'+id,{newPassword:pass});
+    closeModal(); toast('✅ Mot de passe réinitialisé','success');
+  } catch(e) { toast(e.error||'Erreur','error'); }
+}
+
+function changeDuree(id, name, currentPlan) {
+  var plans = [
+    {v:'starter', icon:'🗓️', label:'30 Jours', color:'#f59e0b'},
+    {v:'pro',     icon:'📅', label:'1 An',     color:'#1a5fb4'},
+    {v:'enterprise', icon:'♾️', label:'À vie',  color:'#22c55e'}
+  ];
+  var opts = plans.map(function(p){
+    var isCurrent = p.v === currentPlan;
+    return '<div onclick="selectNewPlan(\''+p.v+'\')" id="np_'+p.v+'" style="padding:12px;border:2px solid '+(isCurrent?p.color:'#0f1e35')+';border-radius:10px;cursor:pointer;text-align:center;background:'+(isCurrent?p.color+'20':'transparent')+'">'+
+      '<div style="font-size:20px">'+p.icon+'</div>'+
+      '<div style="font-weight:700;color:'+(isCurrent?p.color:'#64748b')+';font-size:12px">'+p.label+'</div>'+
+      (isCurrent?'<div style="font-size:10px;color:'+p.color+'">Actuel</div>':'')+
+      '</div>';
+  }).join('');
+  openModal('⏱️ Changer durée — '+name,
+    '<input type="hidden" id="np_val" value="'+currentPlan+'">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+opts+'</div>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
+    '<button class="btn btn-blue" onclick="saveChangeDuree('+id+')">✅ Appliquer</button>'
+  );
+}
+
+function selectNewPlan(plan) {
+  document.getElementById('np_val').value = plan;
+  var colors = {starter:'#f59e0b',pro:'#1a5fb4',enterprise:'#22c55e'};
+  ['starter','pro','enterprise'].forEach(function(p){
+    var el = document.getElementById('np_'+p);
+    if (!el) return;
+    if (p===plan){
+      el.style.borderColor=colors[p]; el.style.background=colors[p]+'20';
+      el.querySelectorAll('div')[1].style.color=colors[p];
+    } else {
+      el.style.borderColor='#0f1e35'; el.style.background='transparent';
+      el.querySelectorAll('div')[1].style.color='#64748b';
+    }
+  });
+}
+
+async function saveChangeDuree(id) {
+  var plan = document.getElementById("np_val").value;
+  try {
+    await api('PUT','/api/admin/accounts/'+id,{plan:plan});
+    closeModal(); renderSuperAdmin();
+    var labels = {starter:'30 Jours',pro:'1 An',enterprise:'À vie'};
+    toast('✅ Durée changée : '+labels[plan],'success');
   } catch(e) { toast(e.error||'Erreur','error'); }
 }
 
@@ -1821,12 +1938,9 @@ async function editAccount(id) {
   var accounts = await api('GET','/api/admin/accounts');
   var a = accounts.find(function(x){return x.id==id;});
   if (!a) return;
-  var planOpts = ['trial','starter','pro','enterprise'].map(function(p){return '<option value="'+p+'"'+(a.plan===p?' selected':'')+'>'+p+'</option>';}).join('');
-  openModal('Modifier compte',
+  openModal('Modifier — '+a.name,
     '<div class="form-grid">'+
     '<div class="form-field"><label>Nom</label><input id="ea_name" value="'+a.name+'"></div>'+
-    '<div class="form-field"><label>Nouveau MDP (vide = inchange)</label><input type="password" id="ea_pass"></div>'+
-    '<div class="form-field"><label>Plan</label><select id="ea_plan">'+planOpts+'</select></div>'+
     '<div class="form-field"><label>Statut</label><select id="ea_status"><option value="active"'+(a.status==='active'?' selected':'')+'>Actif</option><option value="suspended"'+(a.status==='suspended'?' selected':'')+'>Suspendu</option></select></div>'+
     '</div>',
     '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>'+
@@ -1835,16 +1949,10 @@ async function editAccount(id) {
 }
 
 async function saveEditAccount(id) {
-  var d = {
-    name: document.getElementById("ea_name").value,
-    plan: document.getElementById("ea_plan").value,
-    status: document.getElementById("ea_status").value
-  };
-  var pass = document.getElementById("ea_pass").value;
-  if (pass) d.newPassword = pass;
+  var d = { name: document.getElementById("ea_name").value, status: document.getElementById("ea_status").value };
   try {
     await api('PUT','/api/admin/accounts/'+id,d);
-    closeModal(); renderSuperAdmin(); toast('Compte mis a jour','success');
+    closeModal(); renderSuperAdmin(); toast('Compte mis à jour','success');
   } catch(e) { toast(e.error||'Erreur','error'); }
 }
 
