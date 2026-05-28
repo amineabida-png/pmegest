@@ -815,7 +815,62 @@ app.delete('/api/chantiers/:id',auth,(req,res)=>{
   } catch(e){res.status(500).json({error:e.message});}
 });
 
-// ── OCR — Analyser image facture fournisseur ─────────────
+// ── TRANSCRIPTION VOCALE — Groq Whisper (tous navigateurs) ─
+app.post('/api/ia/transcription', auth, async (req, res) => {
+  try {
+    const { audio, mime, lang } = req.body;
+    if (!GROQ_API_KEY) return res.status(500).json({ error: 'Clé Groq non configurée.' });
+    if (!audio) return res.status(400).json({ error: 'Audio manquant.' });
+
+    // Convert base64 to buffer
+    const audioBuffer = Buffer.from(audio, 'base64');
+
+    // Determine file extension
+    const extMap = { 'audio/webm':'webm', 'audio/mp4':'mp4', 'audio/ogg':'ogg', 'audio/wav':'wav', 'audio/mpeg':'mp3' };
+    const ext = extMap[mime] || 'webm';
+    const filename = `voice.${ext}`;
+
+    // Whisper language code
+    const langMap = { 'fr':'fr', 'ar':'ar', 'ar-MA':'ar' };
+    const whisperLang = langMap[lang] || 'fr';
+
+    // Build multipart form for Groq Whisper
+    const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
+    const CRLF = '\r\n';
+    const parts = [
+      `--${boundary}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-large-v3`,
+      `--${boundary}${CRLF}Content-Disposition: form-data; name="language"${CRLF}${CRLF}${whisperLang}`,
+      `--${boundary}${CRLF}Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}json`,
+      `--${boundary}${CRLF}Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}Content-Type: ${mime}${CRLF}${CRLF}`
+    ];
+
+    const header = Buffer.from(parts.join(CRLF) + CRLF);
+    const footer = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+    const body = Buffer.concat([header, audioBuffer, footer]);
+
+    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length
+      },
+      body: body
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return res.status(500).json({ error: 'Erreur Whisper: ' + err });
+    }
+
+    const data = await response.json();
+    res.json({ success: true, text: data.text || '' });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 app.post('/api/ia/ocr-facture', auth, async (req, res) => {
   try {
     const { base64, mime, isImage } = req.body;

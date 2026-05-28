@@ -4786,12 +4786,14 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+
 // ══════════════════════════════════════════════════════════
-//  RECONNAISSANCE VOCALE — FR / AR / Darija
+//  RECONNAISSANCE VOCALE — Groq Whisper (tous navigateurs)
 // ══════════════════════════════════════════════════════════
-var _iaLang = 'fr-FR';
-var _iaRecognition = null;
+var _iaLang = 'fr';
 var _iaMicActive = false;
+var _iaMediaRecorder = null;
+var _iaAudioChunks = [];
 
 function iaSetLang(lang) {
   _iaLang = lang;
@@ -4799,70 +4801,117 @@ function iaSetLang(lang) {
     var b = document.getElementById(id);
     if(b){ b.style.borderColor='#e2e8f0'; b.style.background='transparent'; b.style.color='#64748b'; }
   });
-  var map = {'fr-FR':'iaBtnFR','ar-MA':'iaBtnAR','ar':'iaBtnDA'};
+  var map = {'fr':'iaBtnFR','ar':'iaBtnAR','ar-MA':'iaBtnDA'};
   var active = document.getElementById(map[lang]);
   if(active){ active.style.borderColor='#714B67'; active.style.background='#714B6720'; active.style.color='#714B67'; }
   var input = document.getElementById('iaInput');
   if(input){
-    if(lang==='fr-FR'){ input.placeholder='Décrivez le document à créer...'; input.dir='ltr'; }
-    else if(lang==='ar-MA'){ input.placeholder='صف الوثيقة المطلوبة...'; input.dir='rtl'; }
-    else { input.placeholder='وصف الوثيقة اللي بغيت...'; input.dir='rtl'; }
+    if(lang==='fr'){ input.placeholder='Décrivez le document à créer...'; input.dir='ltr'; }
+    else if(lang==='ar'){ input.placeholder='صف الوثيقة المطلوبة...'; input.dir='rtl'; }
+    else { input.placeholder='وصف الوثيقة اللي بغيت... (دارجة)'; input.dir='rtl'; }
   }
 }
 
-function iaToggleMic() {
-  if (_iaMicActive) { iaStopMic(); return; }
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    toast('❌ Utilisez Chrome pour la reconnaissance vocale.', 'error');
+async function iaToggleMic() {
+  if (_iaMicActive) {
+    // Stop recording
+    if (_iaMediaRecorder && _iaMediaRecorder.state !== 'inactive') {
+      _iaMediaRecorder.stop();
+    }
     return;
   }
-  _iaRecognition = new SR();
-  _iaRecognition.lang = _iaLang;
-  _iaRecognition.continuous = false;
-  _iaRecognition.interimResults = true;
-  _iaRecognition.maxAlternatives = 1;
 
-  _iaRecognition.onstart = function() {
-    _iaMicActive = true;
-    var btn = document.getElementById('iaMicBtn');
-    if(btn){ btn.style.background='#ef444420'; btn.style.borderColor='#ef4444'; btn.textContent='⏹'; }
-    var vi = document.getElementById('iaVoiceIndicator');
-    if(vi) vi.style.display='block';
-  };
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('❌ Votre navigateur ne supporte pas le micro. Mettez à jour votre navigateur.', 'error');
+    return;
+  }
 
-  _iaRecognition.onresult = function(event) {
-    var transcript = '';
-    for(var i=event.resultIndex; i<event.results.length; i++){
-      transcript += event.results[i][0].transcript;
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _iaAudioChunks = [];
+
+    // Pick best supported format
+    var mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported('audio/webm')) {
+      mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/ogg';
     }
-    var input = document.getElementById('iaInput');
-    if(input) input.value = transcript;
-  };
 
-  _iaRecognition.onend = function() {
-    iaStopMic();
-    var input = document.getElementById('iaInput');
-    if(input && input.value.trim()) setTimeout(iaEnvoyer, 400);
-  };
+    _iaMediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
 
-  _iaRecognition.onerror = function(e) {
-    iaStopMic();
-    var msgs = {'not-allowed':'Accès micro refusé. Autorisez le micro dans Chrome.','no-speech':'Aucune voix détectée. Réessayez.','network':'Erreur réseau.'};
-    toast('🎤 '+(msgs[e.error]||'Erreur: '+e.error),'error');
-  };
+    _iaMediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) _iaAudioChunks.push(e.data);
+    };
 
-  _iaRecognition.start();
-}
+    _iaMediaRecorder.onstart = function() {
+      _iaMicActive = true;
+      var btn = document.getElementById('iaMicBtn');
+      if(btn){ btn.style.background='#ef444420'; btn.style.borderColor='#ef4444'; btn.textContent='⏹'; }
+      var vi = document.getElementById('iaVoiceIndicator');
+      if(vi) vi.style.display='block';
+    };
 
-function iaStopMic() {
-  _iaMicActive = false;
-  if(_iaRecognition){ try{ _iaRecognition.stop(); }catch(e){} _iaRecognition=null; }
-  var btn = document.getElementById('iaMicBtn');
-  if(btn){ btn.style.background='#f1f5f9'; btn.style.borderColor='#e2e8f0'; btn.textContent='🎤'; }
-  var vi = document.getElementById('iaVoiceIndicator');
-  if(vi) vi.style.display='none';
-  iaSetLang(_iaLang);
+    _iaMediaRecorder.onstop = async function() {
+      _iaMicActive = false;
+      // Stop all tracks
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      var btn = document.getElementById('iaMicBtn');
+      if(btn){ btn.style.background='#f1f5f9'; btn.style.borderColor='#e2e8f0'; btn.textContent='⏳'; btn.disabled=true; }
+      var vi = document.getElementById('iaVoiceIndicator');
+      if(vi){ vi.textContent='⏳ Transcription en cours...'; vi.style.color='#1a5fb4'; vi.style.display='block'; }
+
+      try {
+        var blob = new Blob(_iaAudioChunks, { type: mimeType });
+        // Convert to base64
+        var base64 = await new Promise(function(res,rej){
+          var r = new FileReader();
+          r.onload = function(){ res(r.result.split(',')[1]); };
+          r.onerror = rej;
+          r.readAsDataURL(blob);
+        });
+
+        var token = localStorage.getItem('pmegest_token');
+        var response = await fetch('/api/ia/transcription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+token },
+          body: JSON.stringify({ audio: base64, mime: mimeType, lang: _iaLang })
+        });
+        var result = await response.json();
+
+        if(vi){ vi.style.display='none'; }
+        var restoreBtn = document.getElementById('iaMicBtn');
+        if(restoreBtn){ restoreBtn.textContent='🎤'; restoreBtn.disabled=false; }
+
+        if (result.text && result.text.trim()) {
+          var input = document.getElementById('iaInput');
+          if(input){ input.value = result.text.trim(); input.dir = (_iaLang!=='fr') ? 'rtl' : 'ltr'; }
+          setTimeout(iaEnvoyer, 400);
+        } else {
+          toast('🎤 Aucune voix détectée. Réessayez.', 'error');
+        }
+      } catch(err) {
+        if(vi) vi.style.display='none';
+        var rb = document.getElementById('iaMicBtn');
+        if(rb){ rb.textContent='🎤'; rb.disabled=false; }
+        toast('❌ Erreur transcription : '+(err.message||'Réessayez'), 'error');
+      }
+    };
+
+    _iaMediaRecorder.start();
+
+    // Auto-stop after 30s
+    setTimeout(function(){
+      if(_iaMicActive && _iaMediaRecorder && _iaMediaRecorder.state!=='inactive'){
+        _iaMediaRecorder.stop();
+      }
+    }, 30000);
+
+  } catch(err) {
+    if(err.name === 'NotAllowedError') {
+      toast('🎤 Accès micro refusé. Autorisez le micro dans les paramètres de votre navigateur.', 'error');
+    } else {
+      toast('🎤 Erreur micro : '+err.message, 'error');
+    }
+  }
 }
 </script>
 
@@ -4895,9 +4944,9 @@ function iaStopMic() {
   <div style="padding:10px 12px;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
     <!-- Sélecteur langue -->
     <div style="display:flex;gap:4px;justify-content:center">
-      <button id="iaBtnFR" onclick="iaSetLang('fr-FR')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #714B67;background:#714B6720;color:#714B67;cursor:pointer;font-weight:700">🇫🇷 FR</button>
-      <button id="iaBtnAR" onclick="iaSetLang('ar-MA')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">🇲🇦 عربية</button>
-      <button id="iaBtnDA" onclick="iaSetLang('ar')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">دارجة</button>
+      <button id="iaBtnFR" onclick="iaSetLang('fr')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #714B67;background:#714B6720;color:#714B67;cursor:pointer;font-weight:700">🇫🇷 FR</button>
+      <button id="iaBtnAR" onclick="iaSetLang('ar')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">🇲🇦 عربية</button>
+      <button id="iaBtnDA" onclick="iaSetLang('ar-MA')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">دارجة</button>
     </div>
     <!-- Zone saisie -->
     <div style="display:flex;gap:6px;align-items:flex-end">
