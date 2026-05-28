@@ -4514,7 +4514,7 @@ async function iaEnvoyer() {
     iaAddMsg('assistant',
       '✅ <strong>' + tLabel + '</strong> générée pour <strong>' + (doc.tiers_nom||'—') + '</strong><br>' +
       nbLignes + ' ligne(s) · Total HT : <strong>' + fmtMAD(totalHT) + '</strong><br><br>' +
-      '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📝 Ouvrir et vérifier</button>'
+      '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">🚀 Créer et afficher le document</button>'
     );
   } catch(e) {
     iaRemoveTyping();
@@ -4522,58 +4522,75 @@ async function iaEnvoyer() {
   }
 }
 
-function iaOuvrirForm(doc) {
+async function iaOuvrirForm(doc) {
   // Close IA panel
   document.getElementById('iaPanel').classList.remove('ia-open');
   document.getElementById('iaFab').textContent = '🤖';
 
-  // Navigate to the right page
-  var pageMap = {facture:'facturation',devis:'devis',proforma:'proforma',bon_commande:'bon_commande',bon_livraison:'bon_livraison',avoir:'avoir'};
-  showPage(pageMap[doc.type] || 'facturation');
+  toast('⏳ Création du document en cours...', 'info');
 
-  // Open the doc form
-  setTimeout(function() {
-    docForm(0, doc.type);
+  try {
+    // Find tiers in state by name if no id
+    var tiers = null;
+    if (doc.tiers_id) {
+      tiers = state.tiers.find(function(t){return t.id==doc.tiers_id;});
+    }
+    if (!tiers && doc.tiers_nom) {
+      tiers = state.tiers.find(function(t){
+        return t.raison_sociale.toLowerCase().includes(doc.tiers_nom.toLowerCase()) ||
+               doc.tiers_nom.toLowerCase().includes(t.raison_sociale.toLowerCase());
+      });
+    }
 
-    // Pre-fill fields after modal opens
-    setTimeout(function() {
-      // Tiers
-      if (doc.tiers_id) {
-        var sel = document.getElementById('d_tiers');
-        if (sel) sel.value = doc.tiers_id;
-      }
-      // Date
-      if (doc.date_doc) { var dd = document.getElementById('d_date'); if(dd) dd.value = doc.date_doc; }
-      // Echeance
-      if (doc.echeance) { var de = document.getElementById('d_ech'); if(de) de.value = doc.echeance; }
-      // Mode paiement
-      if (doc.mode_paiement) { var dp = document.getElementById('d_pay'); if(dp) dp.value = doc.mode_paiement; }
-      // Notes
-      if (doc.notes) { var dn = document.getElementById('d_notes'); if(dn) dn.value = doc.notes; }
+    // Build lignes with proper format
+    var lignes = (doc.lignes||[]).map(function(l){
+      return {
+        designation: l.designation,
+        quantite: l.quantite||1,
+        prix_unit_ht: l.prix_unit_ht||0,
+        taux_tva: l.taux_tva||20,
+        taux_remise: 0,
+        unite: 'U'
+      };
+    });
 
-      // Lignes — clear existing and add IA lignes
-      if (doc.lignes && doc.lignes.length > 0) {
-        var container = document.getElementById('lignesContainer');
-        if (container) {
-          container.innerHTML = '';
-          ligneCount = 0;
-          doc.lignes.forEach(function(l) {
-            var i = ligneCount++;
-            var div = document.createElement('div');
-            div.innerHTML = makeLigneHTML(i, {
-              designation: l.designation,
-              quantite: l.quantite,
-              prix_unit_ht: l.prix_unit_ht,
-              taux_tva: l.taux_tva
-            });
-            container.appendChild(div.firstChild);
-          });
-          updateTotaux();
-        }
-      }
-      toast('✨ Document pré-rempli par l\'IA — vérifiez et enregistrez', 'success');
-    }, 200);
-  }, 300);
+    var today = new Date().toISOString().split('T')[0];
+    var due = doc.echeance || new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+
+    var payload = {
+      type: doc.type || 'facture',
+      date_doc: doc.date_doc || today,
+      date_echeance: due,
+      tiers_id: tiers ? tiers.id : null,
+      tiers_nom: tiers ? tiers.raison_sociale : (doc.tiers_nom||''),
+      tiers_ice: tiers ? (tiers.ice||'') : '',
+      tiers_if: tiers ? (tiers.if_fiscal||'') : '',
+      tiers_adresse: tiers ? (tiers.adresse||'') : (doc.tiers_adresse||''),
+      tiers_ville: tiers ? (tiers.ville||'') : (doc.tiers_ville||''),
+      statut: 'brouillon',
+      mode_paiement: doc.mode_paiement || 'virement',
+      notes: doc.notes || 'Créé par Assistant IA PMEGest',
+      lignes: lignes
+    };
+
+    // Save directly to DB
+    var result = await api('POST', '/api/documents', payload);
+    await loadAll();
+
+    // Navigate to the right page
+    var pageMap = {facture:'facturation',devis:'devis',proforma:'proforma',bon_commande:'bon_commande',bon_livraison:'bon_livraison',avoir:'avoir'};
+    showPage(pageMap[doc.type] || 'facturation');
+
+    toast('✅ Document créé ! Ouverture en cours...', 'success');
+
+    // Open print view directly
+    setTimeout(function(){
+      doPrintDoc(result.id);
+    }, 600);
+
+  } catch(e) {
+    toast('❌ Erreur création : ' + (e.error||e.message||'Réessayez'), 'error');
+  }
 }
 
 // Enter key in IA input
