@@ -4814,7 +4814,6 @@ function iaSetLang(lang) {
 
 async function iaToggleMic() {
   if (_iaMicActive) {
-    // Stop recording
     if (_iaMediaRecorder && _iaMediaRecorder.state !== 'inactive') {
       _iaMediaRecorder.stop();
     }
@@ -4830,16 +4829,20 @@ async function iaToggleMic() {
     var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     _iaAudioChunks = [];
 
-    // Pick best supported format
-    var mimeType = 'audio/webm';
-    if (!MediaRecorder.isTypeSupported('audio/webm')) {
-      mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/ogg';
+    // iOS Safari supporte audio/mp4, Firefox audio/ogg, Chrome audio/webm
+    var mimeType = '';
+    var formats = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
+    for(var i=0; i<formats.length; i++){
+      if(MediaRecorder.isTypeSupported(formats[i])){ mimeType = formats[i]; break; }
     }
+    // Si rien supporté, laisser le navigateur choisir
+    var recOptions = mimeType ? { mimeType: mimeType } : {};
 
-    _iaMediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+    _iaMediaRecorder = new MediaRecorder(stream, recOptions);
+    var actualMime = _iaMediaRecorder.mimeType || mimeType || 'audio/mp4';
 
     _iaMediaRecorder.ondataavailable = function(e) {
-      if (e.data.size > 0) _iaAudioChunks.push(e.data);
+      if (e.data && e.data.size > 0) _iaAudioChunks.push(e.data);
     };
 
     _iaMediaRecorder.onstart = function() {
@@ -4847,12 +4850,11 @@ async function iaToggleMic() {
       var btn = document.getElementById('iaMicBtn');
       if(btn){ btn.style.background='#ef444420'; btn.style.borderColor='#ef4444'; btn.textContent='⏹'; }
       var vi = document.getElementById('iaVoiceIndicator');
-      if(vi) vi.style.display='block';
+      if(vi){ vi.textContent='🔴 Écoute en cours... (parlez puis appuyez ⏹)'; vi.style.color='#ef4444'; vi.style.display='block'; }
     };
 
     _iaMediaRecorder.onstop = async function() {
       _iaMicActive = false;
-      // Stop all tracks
       stream.getTracks().forEach(function(t){ t.stop(); });
       var btn = document.getElementById('iaMicBtn');
       if(btn){ btn.style.background='#f1f5f9'; btn.style.borderColor='#e2e8f0'; btn.textContent='⏳'; btn.disabled=true; }
@@ -4860,8 +4862,14 @@ async function iaToggleMic() {
       if(vi){ vi.textContent='⏳ Transcription en cours...'; vi.style.color='#1a5fb4'; vi.style.display='block'; }
 
       try {
-        var blob = new Blob(_iaAudioChunks, { type: mimeType });
-        // Convert to base64
+        if(_iaAudioChunks.length === 0){
+          throw new Error('Aucun audio enregistré');
+        }
+        var blob = new Blob(_iaAudioChunks, { type: actualMime });
+        if(blob.size < 1000){
+          throw new Error('Enregistrement trop court — parlez plus longtemps');
+        }
+
         var base64 = await new Promise(function(res,rej){
           var r = new FileReader();
           r.onload = function(){ res(r.result.split(',')[1]); };
@@ -4873,32 +4881,35 @@ async function iaToggleMic() {
         var response = await fetch('/api/ia/transcription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+token },
-          body: JSON.stringify({ audio: base64, mime: mimeType, lang: _iaLang })
+          body: JSON.stringify({ audio: base64, mime: actualMime, lang: _iaLang })
         });
         var result = await response.json();
 
-        if(vi){ vi.style.display='none'; }
-        var restoreBtn = document.getElementById('iaMicBtn');
-        if(restoreBtn){ restoreBtn.textContent='🎤'; restoreBtn.disabled=false; }
+        if(vi) vi.style.display='none';
+        var rb = document.getElementById('iaMicBtn');
+        if(rb){ rb.textContent='🎤'; rb.disabled=false; }
 
         if (result.text && result.text.trim()) {
           var input = document.getElementById('iaInput');
           if(input){ input.value = result.text.trim(); input.dir = (_iaLang!=='fr') ? 'rtl' : 'ltr'; }
           setTimeout(iaEnvoyer, 400);
+        } else if(result.error) {
+          toast('❌ ' + result.error, 'error');
         } else {
-          toast('🎤 Aucune voix détectée. Réessayez.', 'error');
+          toast('🎤 Aucune voix détectée. Parlez plus fort et réessayez.', 'error');
         }
       } catch(err) {
         if(vi) vi.style.display='none';
-        var rb = document.getElementById('iaMicBtn');
-        if(rb){ rb.textContent='🎤'; rb.disabled=false; }
-        toast('❌ Erreur transcription : '+(err.message||'Réessayez'), 'error');
+        var rb2 = document.getElementById('iaMicBtn');
+        if(rb2){ rb2.textContent='🎤'; rb2.disabled=false; }
+        toast('❌ ' + (err.message||'Erreur transcription'), 'error');
       }
     };
 
-    _iaMediaRecorder.start();
+    // Collecter données toutes les 250ms pour éviter perte sur iOS
+    _iaMediaRecorder.start(250);
 
-    // Auto-stop after 30s
+    // Auto-stop après 30s
     setTimeout(function(){
       if(_iaMicActive && _iaMediaRecorder && _iaMediaRecorder.state!=='inactive'){
         _iaMediaRecorder.stop();
@@ -4907,7 +4918,7 @@ async function iaToggleMic() {
 
   } catch(err) {
     if(err.name === 'NotAllowedError') {
-      toast('🎤 Accès micro refusé. Autorisez le micro dans les paramètres de votre navigateur.', 'error');
+      toast('🎤 Accès micro refusé. Allez dans Réglages → Safari → Microphone → Autoriser', 'error');
     } else {
       toast('🎤 Erreur micro : '+err.message, 'error');
     }
