@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const FormData = require('form-data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -825,58 +824,55 @@ app.post('/api/ia/transcription', auth, async (req, res) => {
 
     const audioBuffer = Buffer.from(audio, 'base64');
     console.log(`[Whisper] mime=${mime} size=${audioBuffer.length} lang=${lang}`);
+    if (audioBuffer.length < 500) return res.json({ success: true, text: '' });
 
-    if (audioBuffer.length < 500) {
-      return res.json({ success: true, text: '' });
-    }
-
-    // iOS → mp4/m4a, Firefox → ogg, Chrome → webm
-    const extMap = {
-      'audio/webm':'webm','audio/mp4':'mp4','audio/ogg':'ogg',
-      'audio/wav':'wav','audio/mpeg':'mp3','audio/x-m4a':'m4a',
-      'audio/aac':'m4a','video/mp4':'mp4','audio/mp4;codecs=mp4a.40.2':'mp4'
-    };
-    // normalize mime (strip codecs part for lookup)
-    const baseMime = (mime||'').split(';')[0].trim();
+    const baseMime = (mime || 'audio/mp4').split(';')[0].trim();
+    const extMap = { 'audio/webm':'webm','audio/mp4':'mp4','audio/ogg':'ogg','audio/wav':'wav','audio/mpeg':'mp3','audio/x-m4a':'m4a','audio/aac':'m4a','video/mp4':'mp4' };
     const ext = extMap[baseMime] || 'm4a';
-    const filename = `voice.${ext}`;
-    const fileMime = baseMime || 'audio/mp4';
-
-    const langMap = { 'fr':'fr', 'ar':'ar', 'ar-MA':'ar' };
+    const fileMime = baseMime;
+    const langMap = { 'fr':'fr','ar':'ar','ar-MA':'ar' };
     const whisperLang = langMap[lang] || 'fr';
 
-    // Write to temp file then send via FormData
-    const tmpPath = `/tmp/voice_${Date.now()}.${ext}`;
-    fs.writeFileSync(tmpPath, audioBuffer);
+    // Pure Node.js multipart — no external deps
+    const boundary = 'PMEGestBoundary' + Date.now();
+    const CRLF = Buffer.from('\r\n');
+    const parts = [];
 
-    try {
-      const FormData = require('form-data');
-      const form = new FormData();
-      form.append('file', fs.createReadStream(tmpPath), { filename, contentType: fileMime });
-      form.append('model', 'whisper-large-v3');
-      form.append('language', whisperLang);
-      form.append('response_format', 'json');
+    const addField = (name, value) => {
+      parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}`));
+      parts.push(CRLF);
+    };
+    addField('model', 'whisper-large-v3');
+    addField('language', whisperLang);
+    addField('response_format', 'json');
 
-      const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, ...form.getHeaders() },
-        body: form
-      });
+    // Audio file part
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="voice.${ext}"\r\nContent-Type: ${fileMime}\r\n\r\n`));
+    parts.push(audioBuffer);
+    parts.push(CRLF);
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
 
-      const rawText = await response.text();
-      console.log(`[Whisper] status=${response.status} response=${rawText.slice(0,300)}`);
-      fs.unlinkSync(tmpPath);
+    const body = Buffer.concat(parts);
 
-      if (!response.ok) return res.status(500).json({ error: 'Whisper: ' + rawText });
+    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': String(body.length)
+      },
+      body
+    });
 
-      const data = JSON.parse(rawText);
-      res.json({ success: true, text: (data.text || '').trim() });
-    } catch(e) {
-      try { fs.unlinkSync(tmpPath); } catch(_){}
-      throw e;
-    }
+    const rawText = await response.text();
+    console.log(`[Whisper] status=${response.status} resp=${rawText.slice(0, 200)}`);
+
+    if (!response.ok) return res.status(500).json({ error: 'Whisper: ' + rawText });
+
+    const data = JSON.parse(rawText);
+    res.json({ success: true, text: (data.text || '').trim() });
   } catch(e) {
-    console.error('[Whisper] error:', e.message);
+    console.error('[Whisper]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
