@@ -4510,10 +4510,11 @@ async function iaEnvoyer() {
     var nbLignes = doc.lignes ? doc.lignes.length : 0;
     var totalHT = (doc.lignes||[]).reduce(function(s,l){return s+(l.quantite*l.prix_unit_ht);},0);
 
+    window._iaLastDoc = doc;
     iaAddMsg('assistant',
       '✅ <strong>' + tLabel + '</strong> générée pour <strong>' + (doc.tiers_nom||'—') + '</strong><br>' +
       nbLignes + ' ligne(s) · Total HT : <strong>' + fmtMAD(totalHT) + '</strong><br><br>' +
-      '<button onclick="iaOuvrirForm(' + JSON.stringify(doc).replace(/'/g,"&#39;") + ')" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📝 Ouvrir et vérifier</button>'
+      '<button onclick="iaOuvrirForm(window._iaLastDoc)" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📝 Ouvrir et vérifier</button>'
     );
   } catch(e) {
     iaRemoveTyping();
