@@ -815,6 +815,98 @@ app.delete('/api/chantiers/:id',auth,(req,res)=>{
   } catch(e){res.status(500).json({error:e.message});}
 });
 
+// ══════════════════════════════════════════════════════════
+//  IA — Assistant Génération de Documents (Groq API)
+// ══════════════════════════════════════════════════════════
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+app.post('/api/ia/generer-document', auth, async (req, res) => {
+  try {
+    const { prompt, tiers, articles } = req.body;
+    if (!GROQ_API_KEY) return res.status(500).json({ error: 'Clé Groq non configurée. Ajoutez GROQ_API_KEY dans les variables Railway.' });
+
+    const tiersInfo = tiers && tiers.length > 0
+      ? 'Clients/Fournisseurs disponibles: ' + tiers.map(t => `"${t.raison_sociale}" (id:${t.id}, ville:${t.ville||''})`).join(', ')
+      : 'Aucun tiers enregistré';
+    const articlesInfo = articles && articles.length > 0
+      ? 'Articles disponibles: ' + articles.map(a => `"${a.designation}" (id:${a.id}, prix_ht:${a.prix_vente_ht}, tva:${a.taux_tva}%)`).join(', ')
+      : 'Aucun article enregistré';
+
+    const systemPrompt = `Tu es un assistant de facturation pour PME marocaine. Tu analyses la demande en français ou darija et tu génères UNIQUEMENT un objet JSON valide, sans markdown, sans texte avant ou après.
+
+Le JSON doit avoir exactement cette structure:
+{
+  "type": "facture|devis|proforma|bon_commande|bon_livraison|avoir",
+  "tiers_id": null ou number (id du client si trouvé dans la liste),
+  "tiers_nom": "Nom du client/fournisseur",
+  "tiers_adresse": "Adresse si mentionnée",
+  "tiers_ville": "Ville si mentionnée",
+  "date_doc": "YYYY-MM-DD (aujourd'hui si non précisé)",
+  "echeance": "YYYY-MM-DD (30 jours après si non précisé pour facture)",
+  "mode_paiement": "virement|cheque|especes|carte",
+  "notes": "Notes ou conditions particulières",
+  "lignes": [
+    {
+      "designation": "Description de la ligne",
+      "quantite": number,
+      "prix_unit_ht": number,
+      "taux_tva": 0|7|10|14|20
+    }
+  ]
+}
+
+Règles importantes:
+- Monnaie = MAD (dirhams marocains)
+- TVA Maroc: 0%, 7% (eau/électricité), 10% (restauration/transport), 14% (électricité/banques), 20% (standard)
+- Si le type n'est pas précisé, utilise "facture"
+- Si la TVA n'est pas précisée, utilise 20%
+- Date aujourd'hui: ${new Date().toISOString().split('T')[0]}
+- ${tiersInfo}
+- ${articlesInfo}
+- Si un client de la liste correspond, mets son id dans tiers_id
+- Si un article de la liste correspond, utilise son prix et sa TVA`;
+
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 1500
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(500).json({ error: 'Erreur Groq: ' + errText });
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    // Parse JSON — clean markdown fences if present
+    const clean = content.replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      return res.status(500).json({ error: 'Réponse IA non valide. Réessayez avec plus de détails.', raw: clean });
+    }
+
+    res.json({ success: true, document: parsed });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'frontend/public/index.html')));
 
 app.listen(PORT,'0.0.0.0',()=>{

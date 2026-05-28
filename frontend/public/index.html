@@ -4449,6 +4449,185 @@ td.r{text-align:right;font-family:'DM Mono',monospace}tr:nth-child(even){backgro
   setTimeout(function(){w.print();},700);
 }
 
+
+// ══════════════════════════════════════════════════════════
+//  MODULE IA — Assistant Génération Documents
+// ══════════════════════════════════════════════════════════
+function iaToggle() {
+  var panel = document.getElementById('iaPanel');
+  var fab = document.getElementById('iaFab');
+  var open = panel.classList.toggle('ia-open');
+  fab.textContent = open ? '✕' : '🤖';
+  if (open && document.getElementById('iaMessages').children.length === 0) {
+    iaAddMsg('assistant', 'Bonjour ! Décrivez-moi le document à créer en français ou en darija 🇲🇦<br><br>Exemples :<br>• <em>Facture pour Marjane, 3 audits à 5000 DH, TVA 20%</em><br>• <em>Devis travaux maçonnerie Bouskoura 80 000 DH HT TVA 14%</em><br>• <em>Bon de livraison pour Carrefour, 100 cartons de tomates</em>');
+  }
+}
+
+function iaAddMsg(role, html) {
+  var msgs = document.getElementById('iaMessages');
+  var d = document.createElement('div');
+  d.className = 'ia-msg ia-' + role;
+  d.innerHTML = '<div class="ia-bubble">' + html + '</div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function iaAddTyping() {
+  var msgs = document.getElementById('iaMessages');
+  var d = document.createElement('div');
+  d.className = 'ia-msg ia-assistant';
+  d.id = 'iaTyping';
+  d.innerHTML = '<div class="ia-bubble"><span class="ia-dot"></span><span class="ia-dot"></span><span class="ia-dot"></span></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function iaRemoveTyping() {
+  var t = document.getElementById('iaTyping');
+  if (t) t.remove();
+}
+
+async function iaEnvoyer() {
+  var input = document.getElementById('iaInput');
+  var txt = input.value.trim();
+  if (!txt) return;
+  input.value = '';
+
+  iaAddMsg('user', txt.replace(/</g,'&lt;'));
+  iaAddTyping();
+
+  try {
+    var result = await api('POST', '/api/ia/generer-document', {
+      prompt: txt,
+      tiers: state.tiers || [],
+      articles: state.articles || []
+    });
+
+    iaRemoveTyping();
+    var doc = result.document;
+    var typeLabels = {facture:'Facture',devis:'Devis',proforma:'Proforma',bon_commande:'Bon de Commande',bon_livraison:'Bon de Livraison',avoir:'Avoir'};
+    var tLabel = typeLabels[doc.type] || doc.type;
+    var nbLignes = doc.lignes ? doc.lignes.length : 0;
+    var totalHT = (doc.lignes||[]).reduce(function(s,l){return s+(l.quantite*l.prix_unit_ht);},0);
+
+    iaAddMsg('assistant',
+      '✅ <strong>' + tLabel + '</strong> générée pour <strong>' + (doc.tiers_nom||'—') + '</strong><br>' +
+      nbLignes + ' ligne(s) · Total HT : <strong>' + fmtMAD(totalHT) + '</strong><br><br>' +
+      '<button onclick="iaOuvrirForm(' + JSON.stringify(doc).replace(/'/g,"&#39;") + ')" style="background:#714B67;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📝 Ouvrir et vérifier</button>'
+    );
+  } catch(e) {
+    iaRemoveTyping();
+    iaAddMsg('assistant', '❌ Erreur : ' + (e.error || e.message || 'Réessayez') + '<br><small>Astuce : soyez plus précis (nom client, montants, type de document)</small>');
+  }
+}
+
+function iaOuvrirForm(doc) {
+  // Close IA panel
+  document.getElementById('iaPanel').classList.remove('ia-open');
+  document.getElementById('iaFab').textContent = '🤖';
+
+  // Navigate to the right page
+  var pageMap = {facture:'facturation',devis:'devis',proforma:'proforma',bon_commande:'bon_commande',bon_livraison:'bon_livraison',avoir:'avoir'};
+  showPage(pageMap[doc.type] || 'facturation');
+
+  // Open the doc form
+  setTimeout(function() {
+    docForm(0, doc.type);
+
+    // Pre-fill fields after modal opens
+    setTimeout(function() {
+      // Tiers
+      if (doc.tiers_id) {
+        var sel = document.getElementById('d_tiers');
+        if (sel) sel.value = doc.tiers_id;
+      }
+      // Date
+      if (doc.date_doc) { var dd = document.getElementById('d_date'); if(dd) dd.value = doc.date_doc; }
+      // Echeance
+      if (doc.echeance) { var de = document.getElementById('d_ech'); if(de) de.value = doc.echeance; }
+      // Mode paiement
+      if (doc.mode_paiement) { var dp = document.getElementById('d_pay'); if(dp) dp.value = doc.mode_paiement; }
+      // Notes
+      if (doc.notes) { var dn = document.getElementById('d_notes'); if(dn) dn.value = doc.notes; }
+
+      // Lignes — clear existing and add IA lignes
+      if (doc.lignes && doc.lignes.length > 0) {
+        var container = document.getElementById('lignesContainer');
+        if (container) {
+          container.innerHTML = '';
+          ligneCount = 0;
+          doc.lignes.forEach(function(l) {
+            var i = ligneCount++;
+            var div = document.createElement('div');
+            div.innerHTML = makeLigneHTML(i, {
+              designation: l.designation,
+              quantite: l.quantite,
+              prix_unit_ht: l.prix_unit_ht,
+              taux_tva: l.taux_tva
+            });
+            container.appendChild(div.firstChild);
+          });
+          updateTotaux();
+        }
+      }
+      toast('✨ Document pré-rempli par l\'IA — vérifiez et enregistrez', 'success');
+    }, 200);
+  }, 300);
+}
+
+// Enter key in IA input
+document.addEventListener('keydown', function(e) {
+  var input = document.getElementById('iaInput');
+  if (e.target === input && e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    iaEnvoyer();
+  }
+});
 </script>
+
+<!-- IA Floating Button -->
+<button id="iaFab" onclick="iaToggle()" title="Assistant IA — Créer un document" style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#714B67;color:#fff;font-size:22px;border:none;cursor:pointer;z-index:9998;box-shadow:0 4px 16px rgba(113,75,103,0.4);display:flex;align-items:center;justify-content:center">🤖</button>
+
+<!-- IA Panel -->
+<div id="iaPanel" style="position:fixed;bottom:88px;right:24px;width:340px;max-height:520px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:9997;display:flex;flex-direction:column;transform:scale(0.85) translateY(20px);opacity:0;pointer-events:none;transition:all 0.2s ease;overflow:hidden;border:0.5px solid #e2e8f0">
+
+  <div style="background:#714B67;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0"></div>
+    <div>
+      <div style="color:#fff;font-size:13px;font-weight:700">Assistant IA — PMEGest</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:10px">Groq · Llama 3.1 · Gratuit</div>
+    </div>
+  </div>
+
+  <div id="iaMessages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:200px;max-height:310px"></div>
+
+  <div style="padding:8px 12px;border-top:1px solid #f1f5f9;flex-shrink:0">
+    <div style="font-size:10px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Exemples rapides</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <button onclick="document.getElementById('iaInput').value='Facture client Alami, 2 jours conseil à 3500 DH HT, TVA 20%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Facture conseil</button>
+      <button onclick="document.getElementById('iaInput').value='Devis travaux peinture villa, 180m² à 85 DH/m², TVA 14%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Devis BTP</button>
+      <button onclick="document.getElementById('iaInput').value='Bon de commande fournisseur, 50 chaises bureau à 450 DH, TVA 20%';iaEnvoyer()" style="font-size:10px;padding:4px 8px;background:#f8f4f7;border:1px solid #e8dde6;border-radius:12px;cursor:pointer;color:#714B67">Bon commande</button>
+    </div>
+  </div>
+
+  <div style="padding:10px 12px;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-shrink:0">
+    <textarea id="iaInput" rows="2" placeholder="Décrivez le document à créer..." style="flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;font-size:12px;resize:none;font-family:inherit;color:#1e293b;background:#f8fafc;line-height:1.4"></textarea>
+    <button onclick="iaEnvoyer()" style="width:36px;height:36px;background:#714B67;border:none;border-radius:10px;cursor:pointer;color:#fff;font-size:16px;align-self:flex-end;flex-shrink:0;display:flex;align-items:center;justify-content:center">➤</button>
+  </div>
+</div>
+
+<style>
+#iaPanel.ia-open { transform:scale(1) translateY(0); opacity:1; pointer-events:all; }
+.ia-msg { display:flex; }
+.ia-user { justify-content:flex-end; }
+.ia-assistant { justify-content:flex-start; }
+.ia-bubble { max-width:88%; padding:8px 12px; border-radius:12px; font-size:12px; line-height:1.5; }
+.ia-user .ia-bubble { background:#714B67; color:#fff; border-bottom-right-radius:3px; }
+.ia-assistant .ia-bubble { background:#f1f5f9; color:#1e293b; border-bottom-left-radius:3px; border:1px solid #e2e8f0; }
+.ia-dot { display:inline-block; width:6px; height:6px; background:#94a3b8; border-radius:50%; margin:0 2px; animation:iaBounce 1.2s infinite; }
+.ia-dot:nth-child(2){animation-delay:.2s} .ia-dot:nth-child(3){animation-delay:.4s}
+@keyframes iaBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+</style>
+
 </body>
 </html>
