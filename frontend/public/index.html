@@ -4844,21 +4844,17 @@ async function iaToggleMic() {
     _iaAudioChunks = [];
     _iaMicActive = true;
 
-    // ── UI : activer le bouton rouge + compteur ──
+    // UI
     var btn = document.getElementById('iaMicBtn');
     if (btn) { btn.style.background='#ef444420'; btn.style.borderColor='#ef4444'; btn.textContent='⏹'; btn.disabled=false; }
     var vi = document.getElementById('iaVoiceIndicator');
     var _iaTimer = 0;
     var _iaTimerInterval = setInterval(function() {
       _iaTimer++;
-      if (vi) {
-        vi.textContent = '🔴 Enregistrement : ' + _iaTimer + 's — Appuyez ⏹ pour terminer';
-        vi.style.color = '#ef4444';
-        vi.style.display = 'block';
-      }
+      if (vi) { vi.textContent='🔴 ' + _iaTimer + 's — Appuyez ⏹ quand vous avez fini'; vi.style.color='#ef4444'; vi.style.display='block'; }
     }, 1000);
 
-    // ── Aperçu temps réel (optionnel, ne bloque pas l'enregistrement) ──
+    // Aperçu temps réel
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     _iaLiveRecog = null;
     var _liveText = '';
@@ -4868,7 +4864,7 @@ async function iaToggleMic() {
         _iaLiveRecog.lang = _iaLang === 'fr' ? 'fr-FR' : 'ar-MA';
         _iaLiveRecog.continuous = true;
         _iaLiveRecog.interimResults = true;
-        _iaLiveRecog.onerror = function() {}; // silencieux
+        _iaLiveRecog.onerror = function() {};
         _iaLiveRecog.onresult = function(e) {
           var txt = '';
           for (var i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
@@ -4880,7 +4876,7 @@ async function iaToggleMic() {
       } catch(e) { _iaLiveRecog = null; }
     }
 
-    // ── Enregistrement MediaRecorder (Whisper) ──
+    // Enregistrement MediaRecorder
     var formats = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
     var mimeType = '';
     for (var fi = 0; fi < formats.length; fi++) {
@@ -4900,18 +4896,13 @@ async function iaToggleMic() {
       if (_iaLiveRecog) { try { _iaLiveRecog.stop(); } catch(e){} _iaLiveRecog = null; }
 
       if (btn) { btn.style.background='#f1f5f9'; btn.style.borderColor='#e2e8f0'; btn.textContent='⏳'; btn.disabled=true; }
-      if (vi) { vi.textContent='⏳ Transcription en cours...'; vi.style.color='#1a5fb4'; vi.style.display='block'; }
+      if (vi) { vi.textContent='⏳ Transcription...'; vi.style.color='#1a5fb4'; vi.style.display='block'; }
 
       try {
-        if (!_iaAudioChunks.length) throw new Error('Aucun audio capturé — réessayez');
+        if (!_iaAudioChunks.length) throw new Error('Aucun audio capturé');
         var blob = new Blob(_iaAudioChunks, { type: actualMime });
-        if (blob.size < 800) throw new Error('Enregistrement trop court — parlez plus longtemps');
-
         var base64 = await new Promise(function(res, rej) {
-          var r = new FileReader();
-          r.onload = function() { res(r.result.split(',')[1]); };
-          r.onerror = rej;
-          r.readAsDataURL(blob);
+          var r = new FileReader(); r.onload = function() { res(r.result.split(',')[1]); }; r.onerror = rej; r.readAsDataURL(blob);
         });
 
         var token = localStorage.getItem('pmegest_token');
@@ -4926,50 +4917,29 @@ async function iaToggleMic() {
         if (btn) { btn.textContent='🎤'; btn.disabled=false; }
         iaSetLang(_iaLang);
 
-        if (result.text && result.text.trim()) {
+        var finalText = (result.text && result.text.trim()) ? result.text.trim() : _liveText.trim();
+        if (finalText) {
           var input = document.getElementById('iaInput');
-          if (input) {
-            input.value = result.text.trim();
-            input.dir = (_iaLang !== 'fr') ? 'rtl' : 'ltr';
-            input.style.borderColor = '#22c55e';
-            // laisser l'utilisateur corriger 1.5s avant envoi auto
-            setTimeout(function() { input.style.borderColor = ''; iaEnvoyer(); }, 1500);
-          }
-        } else if (result.error) {
-          // Whisper a échoué — utiliser le texte temps réel si disponible
-          if (_liveText.trim()) {
-            var input2 = document.getElementById('iaInput');
-            if (input2) { input2.value = _liveText.trim(); }
-            setTimeout(iaEnvoyer, 800);
-          } else {
-            toast('❌ ' + result.error, 'error');
-          }
+          if (input) { input.value = finalText; input.dir = (_iaLang !== 'fr') ? 'rtl' : 'ltr'; input.style.borderColor='#22c55e'; input.focus(); }
+          // PAS d'envoi automatique — l'utilisateur vérifie et clique ➤ lui-même
         } else {
-          toast('🎤 Aucune voix détectée. Parlez plus fort et réessayez.', 'error');
+          toast('🎤 Aucune voix détectée. Réessayez.', 'error');
         }
       } catch(err) {
         if (vi) vi.style.display = 'none';
         if (btn) { btn.textContent='🎤'; btn.disabled=false; }
         iaSetLang(_iaLang);
-        // Fallback sur texte temps réel
         if (_liveText.trim()) {
-          var inp3 = document.getElementById('iaInput');
-          if (inp3) inp3.value = _liveText.trim();
-          setTimeout(iaEnvoyer, 500);
+          var inp2 = document.getElementById('iaInput');
+          if (inp2) { inp2.value = _liveText.trim(); inp2.focus(); }
         } else {
           toast('❌ ' + (err.message || 'Erreur transcription'), 'error');
         }
       }
     };
 
-    _iaMediaRecorder.start(500); // chunk toutes les 500ms
-    // Auto-stop 60s (au lieu de 30s)
-    setTimeout(function() {
-      if (_iaMicActive && _iaMediaRecorder && _iaMediaRecorder.state !== 'inactive') {
-        toast('⏱ Arrêt automatique après 60s', 'info');
-        _iaMediaRecorder.stop();
-      }
-    }, 60000);
+    _iaMediaRecorder.start(500);
+    // AUCUN auto-stop — l'utilisateur appuie sur ⏹ quand il veut
 
   } catch(err) {
     _iaMicActive = false;
