@@ -4785,6 +4785,85 @@ document.addEventListener('keydown', function(e) {
     iaEnvoyer();
   }
 });
+
+// ══════════════════════════════════════════════════════════
+//  RECONNAISSANCE VOCALE — FR / AR / Darija
+// ══════════════════════════════════════════════════════════
+var _iaLang = 'fr-FR';
+var _iaRecognition = null;
+var _iaMicActive = false;
+
+function iaSetLang(lang) {
+  _iaLang = lang;
+  ['iaBtnFR','iaBtnAR','iaBtnDA'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b){ b.style.borderColor='#e2e8f0'; b.style.background='transparent'; b.style.color='#64748b'; }
+  });
+  var map = {'fr-FR':'iaBtnFR','ar-MA':'iaBtnAR','ar':'iaBtnDA'};
+  var active = document.getElementById(map[lang]);
+  if(active){ active.style.borderColor='#714B67'; active.style.background='#714B6720'; active.style.color='#714B67'; }
+  var input = document.getElementById('iaInput');
+  if(input){
+    if(lang==='fr-FR'){ input.placeholder='Décrivez le document à créer...'; input.dir='ltr'; }
+    else if(lang==='ar-MA'){ input.placeholder='صف الوثيقة المطلوبة...'; input.dir='rtl'; }
+    else { input.placeholder='وصف الوثيقة اللي بغيت...'; input.dir='rtl'; }
+  }
+}
+
+function iaToggleMic() {
+  if (_iaMicActive) { iaStopMic(); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    toast('❌ Utilisez Chrome pour la reconnaissance vocale.', 'error');
+    return;
+  }
+  _iaRecognition = new SR();
+  _iaRecognition.lang = _iaLang;
+  _iaRecognition.continuous = false;
+  _iaRecognition.interimResults = true;
+  _iaRecognition.maxAlternatives = 1;
+
+  _iaRecognition.onstart = function() {
+    _iaMicActive = true;
+    var btn = document.getElementById('iaMicBtn');
+    if(btn){ btn.style.background='#ef444420'; btn.style.borderColor='#ef4444'; btn.textContent='⏹'; }
+    var vi = document.getElementById('iaVoiceIndicator');
+    if(vi) vi.style.display='block';
+  };
+
+  _iaRecognition.onresult = function(event) {
+    var transcript = '';
+    for(var i=event.resultIndex; i<event.results.length; i++){
+      transcript += event.results[i][0].transcript;
+    }
+    var input = document.getElementById('iaInput');
+    if(input) input.value = transcript;
+  };
+
+  _iaRecognition.onend = function() {
+    iaStopMic();
+    var input = document.getElementById('iaInput');
+    if(input && input.value.trim()) setTimeout(iaEnvoyer, 400);
+  };
+
+  _iaRecognition.onerror = function(e) {
+    iaStopMic();
+    var msgs = {'not-allowed':'Accès micro refusé. Autorisez le micro dans Chrome.','no-speech':'Aucune voix détectée. Réessayez.','network':'Erreur réseau.'};
+    toast('🎤 '+(msgs[e.error]||'Erreur: '+e.error),'error');
+  };
+
+  _iaRecognition.start();
+}
+
+function iaStopMic() {
+  _iaMicActive = false;
+  if(_iaRecognition){ try{ _iaRecognition.stop(); }catch(e){} _iaRecognition=null; }
+  var btn = document.getElementById('iaMicBtn');
+  if(btn){ btn.style.background='#f1f5f9'; btn.style.borderColor='#e2e8f0'; btn.textContent='🎤'; }
+  var vi = document.getElementById('iaVoiceIndicator');
+  if(vi) vi.style.display='none';
+  iaSetLang(_iaLang);
+}
 </script>
 
 <!-- IA Floating Button -->
@@ -4813,9 +4892,25 @@ document.addEventListener('keydown', function(e) {
     </div>
   </div>
 
-  <div style="padding:10px 12px;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-shrink:0">
-    <textarea id="iaInput" rows="2" placeholder="Décrivez le document à créer..." style="flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;font-size:12px;resize:none;font-family:inherit;color:#1e293b;background:#f8fafc;line-height:1.4"></textarea>
-    <button onclick="iaEnvoyer()" style="width:36px;height:36px;background:#714B67;border:none;border-radius:10px;cursor:pointer;color:#fff;font-size:16px;align-self:flex-end;flex-shrink:0;display:flex;align-items:center;justify-content:center">➤</button>
+  <div style="padding:10px 12px;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+    <!-- Sélecteur langue -->
+    <div style="display:flex;gap:4px;justify-content:center">
+      <button id="iaBtnFR" onclick="iaSetLang('fr-FR')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #714B67;background:#714B6720;color:#714B67;cursor:pointer;font-weight:700">🇫🇷 FR</button>
+      <button id="iaBtnAR" onclick="iaSetLang('ar-MA')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">🇲🇦 عربية</button>
+      <button id="iaBtnDA" onclick="iaSetLang('ar')" style="flex:1;padding:4px;font-size:10px;border-radius:8px;border:1.5px solid #e2e8f0;background:transparent;color:#64748b;cursor:pointer;font-weight:700">دارجة</button>
+    </div>
+    <!-- Zone saisie -->
+    <div style="display:flex;gap:6px;align-items:flex-end">
+      <textarea id="iaInput" rows="2" placeholder="Décrivez le document à créer..." style="flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;font-size:12px;resize:none;font-family:inherit;color:#1e293b;background:#f8fafc;line-height:1.4"></textarea>
+      <!-- Bouton Micro -->
+      <button id="iaMicBtn" onclick="iaToggleMic()" title="Message vocal" style="width:36px;height:36px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s">🎤</button>
+      <!-- Bouton Envoyer -->
+      <button onclick="iaEnvoyer()" style="width:36px;height:36px;background:#714B67;border:none;border-radius:10px;cursor:pointer;color:#fff;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center">➤</button>
+    </div>
+    <!-- Indicateur écoute -->
+    <div id="iaVoiceIndicator" style="display:none;text-align:center;font-size:11px;color:#ef4444;animation:iaPulse 1s infinite">
+      🔴 Écoute en cours... (parlez maintenant)
+    </div>
   </div>
 </div>
 
@@ -4832,6 +4927,7 @@ document.addEventListener('keydown', function(e) {
 .ia-dot { display:inline-block; width:6px; height:6px; background:#94a3b8; border-radius:50%; margin:0 2px; animation:iaBounce 1.2s infinite; }
 .ia-dot:nth-child(2){animation-delay:.2s} .ia-dot:nth-child(3){animation-delay:.4s}
 @keyframes iaBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+@keyframes iaPulse{0%,100%{opacity:1}50%{opacity:0.4}}
 </style>
 </body>
 </html>
