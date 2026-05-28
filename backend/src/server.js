@@ -826,44 +826,55 @@ app.post('/api/ia/transcription', auth, async (req, res) => {
     const audioBuffer = Buffer.from(audio, 'base64');
     console.log(`[Whisper] mime=${mime} size=${audioBuffer.length} lang=${lang}`);
 
-    // iOS Safari → audio/mp4, Firefox → audio/ogg, Chrome → audio/webm
+    if (audioBuffer.length < 500) {
+      return res.json({ success: true, text: '' });
+    }
+
+    // iOS → mp4/m4a, Firefox → ogg, Chrome → webm
     const extMap = {
-      'audio/webm':'webm', 'audio/mp4':'mp4', 'audio/ogg':'ogg',
-      'audio/wav':'wav', 'audio/mpeg':'mp3', 'audio/x-m4a':'m4a',
-      'audio/aac':'m4a', 'video/mp4':'mp4'
+      'audio/webm':'webm','audio/mp4':'mp4','audio/ogg':'ogg',
+      'audio/wav':'wav','audio/mpeg':'mp3','audio/x-m4a':'m4a',
+      'audio/aac':'m4a','video/mp4':'mp4','audio/mp4;codecs=mp4a.40.2':'mp4'
     };
-    const ext = extMap[mime] || 'm4a';
+    // normalize mime (strip codecs part for lookup)
+    const baseMime = (mime||'').split(';')[0].trim();
+    const ext = extMap[baseMime] || 'm4a';
     const filename = `voice.${ext}`;
-    const fileMime = mime === 'video/mp4' ? 'audio/mp4' : (mime || 'audio/mp4');
+    const fileMime = baseMime || 'audio/mp4';
 
     const langMap = { 'fr':'fr', 'ar':'ar', 'ar-MA':'ar' };
     const whisperLang = langMap[lang] || 'fr';
 
-    const form = new FormData();
-    form.append('file', audioBuffer, { filename, contentType: fileMime });
-    form.append('model', 'whisper-large-v3');
-    form.append('language', whisperLang);
-    form.append('response_format', 'json');
+    // Write to temp file then send via FormData
+    const tmpPath = `/tmp/voice_${Date.now()}.${ext}`;
+    fs.writeFileSync(tmpPath, audioBuffer);
 
-    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        ...form.getHeaders()
-      },
-      body: form.getBuffer()
-    });
+    try {
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('file', fs.createReadStream(tmpPath), { filename, contentType: fileMime });
+      form.append('model', 'whisper-large-v3');
+      form.append('language', whisperLang);
+      form.append('response_format', 'json');
 
-    const rawText = await response.text();
-    console.log(`[Whisper] status=${response.status} body=${rawText.slice(0,200)}`);
+      const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, ...form.getHeaders() },
+        body: form
+      });
 
-    if (!response.ok) {
-      return res.status(500).json({ error: 'Erreur Whisper: ' + rawText });
+      const rawText = await response.text();
+      console.log(`[Whisper] status=${response.status} response=${rawText.slice(0,300)}`);
+      fs.unlinkSync(tmpPath);
+
+      if (!response.ok) return res.status(500).json({ error: 'Whisper: ' + rawText });
+
+      const data = JSON.parse(rawText);
+      res.json({ success: true, text: (data.text || '').trim() });
+    } catch(e) {
+      try { fs.unlinkSync(tmpPath); } catch(_){}
+      throw e;
     }
-
-    const data = JSON.parse(rawText);
-    const text = (data.text || '').trim();
-    res.json({ success: true, text });
   } catch(e) {
     console.error('[Whisper] error:', e.message);
     res.status(500).json({ error: e.message });
